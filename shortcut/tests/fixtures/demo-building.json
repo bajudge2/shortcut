@@ -1,0 +1,287 @@
+{
+  "id": "demo-building",
+  "name": "Demo Building (replace with your real map)",
+  "metersPerUnit": 0.1,
+  "northOffsetDeg": 0,
+  "floors": [
+    {
+      "id": "f1",
+      "label": "Floor 1",
+      "level": 1,
+      "width": 1000,
+      "height": 600
+    },
+    {
+      "id": "f2",
+      "label": "Floor 2",
+      "level": 2,
+      "width": 1000,
+      "height": 600
+    }
+  ],
+  "nodes": [
+    {
+      "id": "f1_entrance",
+      "floor": "f1",
+      "x": 100,
+      "y": 300,
+      "kind": "entrance",
+      "name": "Main Entrance"
+    },
+    {
+      "id": "f1_east_exit",
+      "floor": "f1",
+      "x": 900,
+      "y": 300,
+      "kind": "entrance",
+      "name": "East Exit"
+    },
+    {
+      "id": "f1_j1",
+      "floor": "f1",
+      "x": 300,
+      "y": 300,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_j2",
+      "floor": "f1",
+      "x": 500,
+      "y": 300,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_j3",
+      "floor": "f1",
+      "x": 700,
+      "y": 300,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_stairs",
+      "floor": "f1",
+      "x": 500,
+      "y": 200,
+      "kind": "stairs",
+      "name": "Stairwell A"
+    },
+    {
+      "id": "f1_elev",
+      "floor": "f1",
+      "x": 500,
+      "y": 400,
+      "kind": "elevator",
+      "name": "Elevator"
+    },
+    {
+      "id": "f1_r_a",
+      "floor": "f1",
+      "x": 300,
+      "y": 200,
+      "kind": "room",
+      "name": "Room 101"
+    },
+    {
+      "id": "f1_r_b",
+      "floor": "f1",
+      "x": 300,
+      "y": 400,
+      "kind": "room",
+      "name": "Room 102"
+    },
+    {
+      "id": "f1_r_c",
+      "floor": "f1",
+      "x": 700,
+      "y": 200,
+      "kind": "room",
+      "name": "Room 103"
+    },
+    {
+      "id": "f1_r_d",
+      "floor": "f1",
+      "x": 700,
+      "y": 400,
+      "kind": "room",
+      "name": "Cafe"
+    },
+    {
+      "id": "f2_j1",
+      "floor": "f2",
+      "x": 300,
+      "y": 300,
+      "kind": "junction"
+    },
+    {
+      "id": "f2_j2",
+      "floor": "f2",
+      "x": 500,
+      "y": 300,
+      "kind": "junction"
+    },
+    {
+      "id": "f2_j3",
+      "floor": "f2",
+      "x": 700,
+      "y": 300,
+      "kind": "junction"
+    },
+    {
+      "id": "f2_stairs",
+      "floor": "f2",
+      "x": 500,
+      "y": 200,
+      "kind": "stairs",
+      "name": "Stairwell A"
+    },
+    {
+      "id": "f2_elev",
+      "floor": "f2",
+      "x": 500,
+      "y": 400,
+      "kind": "elevator",
+      "name": "Elevator"
+    },
+    {
+      "id": "f2_r_a",
+      "floor": "f2",
+      "x": 300,
+      "y": 200,
+      "kind": "room",
+      "name": "Room 201"
+    },
+    {
+      "id": "f2_r_b",
+      "floor": "f2",
+      "x": 300,
+      "y": 400,
+      "kind": "room",
+      "name": "Room 202"
+    },
+    {
+      "id": "f2_r_c",
+      "floor": "f2",
+      "x": 700,
+      "y": 200,
+      "kind": "room",
+      "name": "Room 203"
+    },
+    {
+      "id": "f2_r_d",
+      "floor": "f2",
+      "x": 700,
+      "y": 400,
+      "kind": "room",
+      "name": "Lab 204"
+    },
+    {
+      "id": "f2_west_end",
+      "floor": "f2",
+      "x": 100,
+      "y": 300,
+      "kind": "junction"
+    }
+  ],
+  "edges": [
+    {
+      "from": "f1_entrance",
+      "to": "f1_j1"
+    },
+    {
+      "from": "f1_j3",
+      "to": "f1_east_exit"
+    },
+    {
+      "from": "f1_j1",
+      "to": "f1_j2"
+    },
+    {
+      "from": "f1_j2",
+      "to": "f1_j3"
+    },
+    {
+      "from": "f1_j1",
+      "to": "f1_r_a"
+    },
+    {
+      "from": "f1_j1",
+      "to": "f1_r_b"
+    },
+    {
+      "from": "f1_j3",
+      "to": "f1_r_c"
+    },
+    {
+      "from": "f1_j3",
+      "to": "f1_r_d"
+    },
+    {
+      "from": "f1_j2",
+      "to": "f1_stairs"
+    },
+    {
+      "from": "f1_j2",
+      "to": "f1_elev"
+    },
+    {
+      "from": "f2_west_end",
+      "to": "f2_j1"
+    },
+    {
+      "from": "f2_j1",
+      "to": "f2_j2"
+    },
+    {
+      "from": "f2_j2",
+      "to": "f2_j3"
+    },
+    {
+      "from": "f2_j1",
+      "to": "f2_r_a"
+    },
+    {
+      "from": "f2_j1",
+      "to": "f2_r_b"
+    },
+    {
+      "from": "f2_j3",
+      "to": "f2_r_c"
+    },
+    {
+      "from": "f2_j3",
+      "to": "f2_r_d"
+    },
+    {
+      "from": "f2_j2",
+      "to": "f2_stairs"
+    },
+    {
+      "from": "f2_j2",
+      "to": "f2_elev"
+    },
+    {
+      "from": "f1_stairs",
+      "to": "f2_stairs",
+      "type": "stairs"
+    },
+    {
+      "from": "f1_elev",
+      "to": "f2_elev",
+      "type": "elevator"
+    }
+  ],
+  "beacons": [
+    {
+      "id": "B1",
+      "node": "f1_j2"
+    },
+    {
+      "id": "B2",
+      "node": "f1_j3"
+    },
+    {
+      "id": "B3",
+      "node": "f2_j2"
+    }
+  ]
+}

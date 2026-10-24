@@ -7,15 +7,18 @@ import { advanceStep, StepDetector, HeadingFilter } from '../src/lib/pdr-math.ts
 import { parseAnchor } from '../src/lib/anchor.ts';
 import type { Building, Position } from '../src/lib/types.ts';
 
-const building = JSON.parse(readFileSync(new URL('../src/data/building.json', import.meta.url), 'utf8')) as Building;
+// Real map: only checked for consistency, so editing it never breaks the logic tests below.
+const realBuilding = JSON.parse(readFileSync(new URL('../src/data/building.json', import.meta.url), 'utf8')) as Building;
+// Frozen copy of the original demo map; the routing / PDR tests are written against its node ids.
+const building = JSON.parse(readFileSync(new URL('./fixtures/demo-building.json', import.meta.url), 'utf8')) as Building;
 const idx = indexBuilding(building);
 
 test('building data is internally consistent', () => {
-  const ids = new Set(building.nodes.map((n) => n.id));
-  assert.equal(ids.size, building.nodes.length, 'duplicate node ids');
-  for (const e of building.edges) assert.ok(ids.has(e.from) && ids.has(e.to), `${e.from}->${e.to}`);
-  for (const b of building.beacons) assert.ok(ids.has(b.node), `beacon ${b.id}`);
-  for (const n of building.nodes) assert.ok(building.floors.some((f) => f.id === n.floor));
+  const ids = new Set(realBuilding.nodes.map((n) => n.id));
+  assert.equal(ids.size, realBuilding.nodes.length, 'duplicate node ids');
+  for (const e of realBuilding.edges) assert.ok(ids.has(e.from) && ids.has(e.to), `${e.from}->${e.to}`);
+  for (const b of realBuilding.beacons) assert.ok(ids.has(b.node), `beacon ${b.id}`);
+  for (const n of realBuilding.nodes) assert.ok(realBuilding.floors.some((f) => f.id === n.floor));
 });
 
 test('same-floor route and distance', () => {
