@@ -6,7 +6,8 @@ The single positional authority. It indexes the building, restores recent exact 
 Inputs:
 - `setAnchor(nodeId, source)`: exact manual/BLE graph-node fix.
 - `setPoint(floor, x, y)`: debug point snapped to a corridor.
-- `onBeacon(fix)`: accepts the stable one-second BLE winner, gated by dead reckoning:
+- `onBeacon(fix)`: accepts the stable one-second BLE winner, gated by signal strength and dead reckoning:
+  - A new beacon (or the first fix) is ignored unless its calibrated RSSI is ≥ `ANCHOR_RSSI` (-65 dBm). Measured on floor 2: -53 to -60 at a board, -71 to -74 at 20–25 ft, so passing a board no longer snaps the dot onto it. Weaker readings are not counted toward a forced switch either.
   - First fix of the session (or only a restored position): anchors immediately.
   - Same beacon: corrects PDR drift only at ≥ -68 dBm, ≥ 1.5 m off, and after an 8 s cooldown.
   - Different beacon: anchors only if its node is within `6 m + 0.3 × meters walked since the last exact fix` of the current estimate (same floor). Otherwise it is held as `pendingBeacon` and accepted only after 6 consecutive reports (~6 s), so a far beacon that is briefly loudest cannot teleport the dot, but a genuinely lost estimate still recovers. A plausible beacon clears the pending one.

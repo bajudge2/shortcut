@@ -16,6 +16,7 @@ import RelocateBanner from './components/RelocateBanner.tsx';
 import PositionStatus from './components/PositionStatus.tsx';
 import { useSignalMonitor } from './components/useSignalMonitor.ts';
 import { useArrival } from './components/useArrival.ts';
+import { arrivalStartId } from './lib/arrival.ts';
 import RouteGuidance from './components/RouteGuidance.tsx';
 
 const building = buildingJson as unknown as Building;
@@ -77,7 +78,10 @@ export default function App() {
     [fromId, dest, accessible],
   );
   const steps = useMemo(() => (route ? describeRoute(engine.idx, route) : []), [route]);
-  const arrival = useArrival({ startId: fromId, destId: dest, position: pos });
+  // "Arrived" needs a fix on the destination or the dot within a couple of meters of it,
+  // not merely the destination being the nearest node.
+  const arrivalStart = useMemo(() => arrivalStartId(engine.idx, pos, dest, fromId), [pos, dest, fromId]);
+  const arrival = useArrival({ startId: arrivalStart, destId: dest, position: pos });
   useEffect(() => engine.setRoute(route?.nodes ?? []), [route]);
   const destNode = dest ? engine.idx.nodeById.get(dest) : undefined;
   const groups = useMemo(() => destinationGroups(building), []);

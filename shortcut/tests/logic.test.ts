@@ -16,6 +16,7 @@ import { parseDeepLink } from '../src/lib/deeplink.ts';
 
 import { PositionEngine } from '../src/positioning/engine.ts';
 import { STEP_LENGTH_M } from '../src/config.ts';
+import { arrivalStartId } from '../src/lib/arrival.ts';
 import type { Building, Position } from '../src/lib/types.ts';
 
 // Real map: only checked for consistency, so editing it never breaks the logic tests below.
@@ -85,17 +86,60 @@ test('real map tech demo walk: B1 Club Hub -> B2 A-255 -> B3 Student Engagement'
   engine.onBeacon({ id: 'B3', rssi: -74 });
   assert.deepEqual(engine.position, atCrossroads, 'far beacon ignored');
 
-  // 3. Turn right (west) to A-255: B2 is accepted as soon as it is heard.
+  // 3. Turn right (west) to A-255. Approaching, B2 reads like "20 ft away" (-71, measured):
+  //    no snap. At the door it reads -53 (measured): snap.
   walk(WEST, stepsFor(258 - 212) - 1);
-  engine.onBeacon({ id: 'B2', rssi: -65 });
+  const approaching = engine.position!;
+  engine.onBeacon({ id: 'B2', rssi: -71 });
+  assert.deepEqual(engine.position, approaching, '20 ft away is not "at A-255"');
+  engine.onBeacon({ id: 'B2', rssi: -53 });
   assert.equal(engine.position!.nodeId, 'f2_a255');
   assert.equal(engine.pendingBeacon, null);
 
   // 4. Turn around and walk east past the crossroads to Student Engagement: B3 accepted.
   engine.setRoute(findRoute(realIdx, 'f2_a255', 'f2_student_engagement')!.nodes);
   walk(EAST, stepsFor(430 - 212) - 2);
-  engine.onBeacon({ id: 'B3', rssi: -65 });
+  engine.onBeacon({ id: 'B3', rssi: -58 });
   assert.equal(engine.position!.nodeId, 'f2_student_engagement');
+});
+
+test('real map: walking past the crossroads to Student Engagement does not snap to A-255', () => {
+  // The bug seen on site: B2 (A-255, ~8 m from the crossroads) read about -74 dBm there and pulled the dot.
+  const compass = (planDeg: number) => (planDeg + realBuilding.northOffsetDeg) % 360;
+  const engine = new PositionEngine(realBuilding, STEP_LENGTH_M);
+  engine.clear();
+  engine.onBeacon({ id: 'B1', rssi: -60 });
+  engine.setRoute(findRoute(engine.idx, 'f2_club_hub', 'f2_student_engagement')!.nodes);
+  const steps = Math.round(((432 - 272) * realBuilding.metersPerUnit) / STEP_LENGTH_M);
+  for (let i = 1; i <= steps; i++) engine.onStep({ headingDeg: compass(180), accelerationPeak: 2, timestamp: i * 500 });
+  const atCrossroads = engine.position!;
+  for (const rssi of [-74, -72, -71, -74]) engine.onBeacon({ id: 'B2', rssi });
+  assert.deepEqual(engine.position, atCrossroads, 'no snap to A-255');
+  assert.notEqual(engine.position!.nodeId, 'f2_a255');
+  assert.equal(engine.pendingBeacon, null, 'weak readings are not even counted toward a forced switch');
+});
+
+test('real map: arrival at A-255 needs a fix there or the dot within 2 m (on-site early "arrived")', () => {
+  const realIdx = indexBuilding(realBuilding);
+  const dest = 'f2_a255'; // (212, 432); 0.18 m per unit
+  const pdr = (x: number, y: number): Position => ({ floor: 'f2', x, y, source: 'pdr', timestamp: 0 });
+  const near = (p: Position) => nearestNode(realIdx, p.floor, p.x, p.y)!.id;
+
+  // Screenshot on site: dot at (230, 432) via steps, ~3.2 m out, nearest node already A-255.
+  const early = pdr(230, 432);
+  assert.equal(near(early), dest);
+  assert.equal(arrivalStartId(realIdx, early, dest, near(early)), null, 'not arrived yet');
+
+  const close = pdr(220, 432); // ~1.4 m out
+  assert.equal(arrivalStartId(realIdx, close, dest, near(close)), dest);
+
+  const anchored: Position = { ...pdr(212, 432), nodeId: dest, source: 'ble' };
+  assert.equal(arrivalStartId(realIdx, anchored, dest, dest), dest, 'Bluetooth fix at the destination');
+
+  // Not the destination: passes the route start through unchanged.
+  const hall = pdr(258, 350);
+  assert.equal(arrivalStartId(realIdx, hall, dest, near(hall)), near(hall));
+  assert.equal(arrivalStartId(realIdx, null, dest, null), null);
 });
 
 test('same-floor route and distance', () => {
@@ -376,13 +420,14 @@ test('dead reckoning rejects a far beacon while walking B1 -> B2, but accepts th
   const walked = engine.position!;
   assert.ok(Math.abs(walked.x - 440) < 1e-6, `x=${walked.x}`); // 14 m east
 
-  // B2 drops out and far-away B3 is loudest for a few seconds -> keep the step estimate
-  for (let i = 0; i < 5; i++) engine.onBeacon({ id: 'B3', rssi: -74 });
+  // B2 drops out and far-away B3 is loudest (and strong enough to anchor) for a few seconds
+  // -> dead reckoning still keeps the step estimate
+  for (let i = 0; i < 5; i++) engine.onBeacon({ id: 'B3', rssi: -62 });
   assert.deepEqual(engine.position, walked);
   assert.equal(engine.pendingBeacon!.id, 'B3');
 
   // B2 is plausible (6 m ahead) -> accepted immediately and the pending B3 is dropped
-  engine.onBeacon({ id: 'B2', rssi: -72 });
+  engine.onBeacon({ id: 'B2', rssi: -62 });
   assert.equal(engine.position!.nodeId, 'f1_j2');
   assert.equal(engine.pendingBeacon, null);
 });
@@ -392,10 +437,10 @@ test('a persistent implausible beacon is eventually accepted (recovery when trul
   engine.clear();
   engine.onBeacon({ id: 'B1', rssi: -60 }); // f1_j2
   for (let i = 1; i < 6; i++) {
-    engine.onBeacon({ id: 'B3', rssi: -70 }); // other floor -> implausible
+    engine.onBeacon({ id: 'B3', rssi: -62 }); // other floor -> implausible
     assert.equal(engine.position!.nodeId, 'f1_j2', `report ${i}`);
   }
-  engine.onBeacon({ id: 'B3', rssi: -70 });
+  engine.onBeacon({ id: 'B3', rssi: -62 });
   assert.equal(engine.position!.nodeId, 'f2_j2');
 });
 

@@ -14,6 +14,12 @@ const BEACON_RANGE_M = 6;
 const PDR_DRIFT_FRACTION = 0.3;
 /** Consecutive ~1 s reports needed to accept a beacon dead reckoning says is too far away. */
 const IMPLAUSIBLE_BEACON_CONFIRMATIONS = 6;
+/**
+ * Minimum calibrated RSSI to move the dot onto a new beacon's node. Measured on floor 2:
+ * at a board -53 to -60 dBm, 20 ft away -71 to -72, ~25 ft -74. Anything weaker only
+ * means "nearby", so walking past a board (e.g. A-255, ~8 m off the crossroads) no longer snaps.
+ */
+export const ANCHOR_RSSI = -65;
 
 export interface NavigationState {
   wrongWay: boolean;
@@ -90,6 +96,10 @@ export class PositionEngine {
     if (beacon === null) return; // keep identity so a brief dropout cannot bypass correction gates
     const def = this.building.beacons.find((candidate) => candidate.id === beacon.id);
     if (!def) return;
+
+    // A new beacon (or the first fix) must be heard as if standing at it. The current
+    // beacon keeps its own, stricter drift-correction gate below.
+    if (beacon.id !== this.lastBeaconId && beacon.rssi < ANCHOR_RSSI) return;
 
     const now = Date.now();
     const node = this.idx.nodeById.get(def.node);

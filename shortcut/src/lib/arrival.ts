@@ -1,4 +1,29 @@
 import { ARRIVAL_DWELL_MS } from '../config.ts';
+import type { BuildingIndex } from './graph.ts';
+import type { Position } from './types.ts';
+
+/** A step-tracked dot counts as "at" the destination only this close to it (meters). */
+export const ARRIVAL_RADIUS_M = 2;
+
+/**
+ * Route start to feed the arrival machine. `fromId` is the node nearest the dot, which
+ * would declare arrival as soon as the dot is closer to the destination than to the
+ * previous node (about 4 m out on the floor-2 map, seen on site). Arrival therefore needs
+ * an exact fix on the destination (Bluetooth or "I'm at"), or the dot within `radiusM`.
+ */
+export function arrivalStartId(
+  idx: BuildingIndex,
+  position: Position | null,
+  destId: string,
+  fromId: string | null,
+  radiusM: number = ARRIVAL_RADIUS_M,
+): string | null {
+  if (!position || fromId !== destId || position.nodeId === destId) return fromId;
+  const dest = idx.nodeById.get(destId);
+  if (!dest || dest.floor !== position.floor) return null;
+  const meters = Math.hypot(position.x - dest.x, position.y - dest.y) * idx.building.metersPerUnit;
+  return meters <= radiusM ? fromId : null;
+}
 
 /**
  * Arrival dwell state machine (Requirement 6).
