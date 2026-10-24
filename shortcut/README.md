@@ -9,7 +9,7 @@ src/data/building.json   map data (floors, nodes, edges, beacons)  <- edit this 
 src/lib/                 routing (Dijkstra), directions, beacon smoothing, dead-reckoning math (pure, tested)
 src/positioning/         engine (single source of truth) + BLE + motion-sensor adapters
 src/components/          MapView (Leaflet, no tiles), QrScanner
-firmware/esp32_beacon/   Arduino sketch for the beacons
+firmware/esp32_beacon/   PlatformIO C++ firmware for the beacons (ESP32, ESP32-S3, ESP32-WROVER-E)
 tools/make-qr.mjs        printable QR sheet, one code per node
 tests/                   logic tests (run with plain Node, no install needed)
 ```
@@ -55,13 +55,61 @@ After changing web code: `npm run cap:sync`, then Run again in Xcode.
 
 ## 3. Flash the ESP32 beacons
 
-1. Arduino IDE -> Boards Manager -> install **esp32 by Espressif Systems**.
-2. Open `firmware/esp32_beacon/esp32_beacon.ino`.
-3. Set `#define BEACON_ID "B1"`, upload. Repeat for the other boards with `"B2"`, `"B3"`.
-4. Open Serial Monitor (115200) to confirm "advertising as CNAV-B1". Power them from USB power banks / chargers.
+Needs [PlatformIO Core](https://docs.platformio.org/en/latest/core/installation/) (`pio`) or the
+PlatformIO VS Code extension. Every board uses the **same source and protocol**, but each chip family gets its own binary; pick the env for the chip:
 
+```bash
+cd firmware/esp32_beacon
+pio run -e esp32s3 -t upload -t monitor         # ESP32-S3 DevKitC (default env)
+pio run -e esp32 -t upload -t monitor           # classic ESP32 (WROOM)
+pio run -e esp32-wrover-e -t upload -t monitor  # ESP32-WROVER-E
+```
+
+A fresh board advertises as `CNAV-U<last 4 MAC hex>` with default calibration. The app ignores ids
+that aren't in `building.json`, so it's harmless until named. Name and calibrate it from the iOS
+app over BLE, or by typing JSON into the serial monitor (115200, one object per line, `help` lists commands):
+
+```
+{"id":"B1"}
+{"txPower":3,"advInterval":40,"measuredPower":-61,"pathLoss":2.2}
+{"cmd":"get"}
+```
+
+Settings are saved to flash (NVS) and survive reboots and reflashes; `{"cmd":"factory_reset"}` clears them.
 The ids must match `beacons` in `src/data/building.json`
 (`{ "id": "B1", "node": "<nodeId where it is mounted>" }`). Moving a beacon = edit JSON, no reflash.
+The S3 environment enables USB CDC for its native USB Serial/JTAG port. Classic ESP32 and WROVER-E boards use UART0 through their USB-to-serial bridge (a bare module needs a 3.3 V UART adapter and boot/reset wiring).
+
+### Calibration protocol (for the iOS app)
+UUIDs are in `src/config.ts` and `firmware/esp32_beacon/src/protocol.h`.
+
+- Beacons are connectable and keep advertising while a phone is connected.
+- GATT service `BEACON_SERVICE_UUID` (same UUID that's advertised):
+  - `BEACON_CONFIG_CHAR_UUID` (read/write). Read returns the current config as UTF-8 JSON:
+    `{"v":1,"fw":"1.0.0","chip":"ESP32-S3","mac":"..","id":"B1","name":"CNAV-B1","txPower":3,"advInterval":40,"measuredPower":-59,"pathLoss":2,"rev":3,"locked":false}`.
+    Write a UTF-8 JSON request (write *with* response) to change it. Keep each BLE write to one
+    small request (under ~180 bytes, i.e. within the negotiated MTU); the 512-byte limit applies to serial.
+  - `BEACON_STATUS_CHAR_UUID` (read/notify): result of the last request,
+    `{"ok":true,"cmd":"set","rev":4,"changed":true}` or `{"ok":false,"cmd":"set","rev":3,"err":"..","field":"txPower"}`.
+    Subscribe before writing, then re-read the config characteristic.
+- Requests (any subset of fields; all are validated before anything is applied):
+
+  | Field | Type / range | Meaning |
+  |---|---|---|
+  | `id` | 1-8 chars `A-Z a-z 0-9 _ -` | beacon id, advertised as `CNAV-<id>` |
+  | `txPower` | int dBm, -30..25 | snapped to the chip's nearest level (ESP32: -12..9, S3: -24..20, steps of 3) |
+  | `advInterval` | int ms, 20..10240 | advertising interval |
+  | `measuredPower` | int dBm, -120..0 | calibrated RSSI at 1 m (stand 1 m away, average RSSI, send it) |
+  | `pathLoss` | number, 1.0..6.0 | path-loss exponent for distance estimates (0.1 resolution) |
+  | `pin` | string, 0-16 chars | optional PIN; once set, BLE writes need `"auth":"<pin>"`. `""` clears it |
+  | `cmd` | `get` / `set` / `reboot` / `factory_reset` | defaults to `set` when fields are present |
+
+- Every phone can read the calibration without connecting: the scan response carries manufacturer
+  data for company id `0xFFFF` = `[version, measuredPower (int8), pathLoss*10 (uint8), rev & 0xFF]`.
+  The primary packet also carries the TX power level.
+- Security: without a PIN anyone in BLE range can rename/recalibrate a beacon. The PIN is a
+  basic guard (sent in plaintext, 5 wrong tries = 30 s lockout). Serial always works (physical access),
+  so a forgotten PIN is fixed with `{"cmd":"factory_reset"}` over USB.
 
 ### Placing only 3 beacons
 Beacons give *room-level* fixes (nearest beacon wins), not exact coordinates. With 3 boards:
