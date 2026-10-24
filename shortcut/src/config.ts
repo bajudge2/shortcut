@@ -15,3 +15,8 @@ export const BEACON_STATUS_CHAR_UUID = '7a1c0003-5f3e-4b8a-9d2e-0c4a5b6d7e8f';
 export const BEACON_MFG_COMPANY_ID = 0xffff;
 
 export const STEP_LENGTH_M = 0.7;
+
+/** Beacons silent this long while scanning => "Bluetooth signal lost". */
+export const SIGNAL_QUIET_THRESHOLD_MS = 15_000;
+/** Arrival card stays up through position drift shorter than this. */
+export const ARRIVAL_DWELL_MS = 3_000;

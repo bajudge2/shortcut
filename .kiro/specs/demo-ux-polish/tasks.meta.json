@@ -1,0 +1,513 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add timing constants to `src/config.ts`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869140009
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869152133
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869226322
+      }
+    ],
+    "1.2 Create the seeded property-test helper `tests/prng.ts`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869140236
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869153034
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869227075
+      }
+    ],
+    "2.1 Implement the reducer, query, and `SignalMonitor` class": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869141197
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869232836
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869501606
+      }
+    ],
+    "2.7 Write example tests for the signal monitor": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869141394
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869517763
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869613676
+      }
+    ],
+    "3.1 Implement `newAnchorNodeId` in `src/lib/anchor.ts`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869141944
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869233883
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869502783
+      }
+    ],
+    "3.2 Implement `stepArrival` and `arrivalDeadline` in `src/lib/arrival.ts`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869142192
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869516615
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869611585
+      }
+    ],
+    "4.1 Implement `nearestLandmark`, `sourceLabel`, `positionStatusText`, `destinationName`, `destinationGroups`, and `guidanceFor`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869142363
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869235003
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869503742
+      }
+    ],
+    "4.2 Write example tests for guidance in `tests/guidance.test.ts`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869142569
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869517366
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869612826
+      }
+    ],
+    "6. Checkpoint: pure logic complete": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869142992
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869616500
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869737081
+      }
+    ],
+    "7.1 Add the feature styles to `src/styles.css`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869143161
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869744154
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869813437
+      }
+    ],
+    "7.2 Create `src/components/PoliteAnnouncer.tsx`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869143352
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869745080
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869813823
+      }
+    ],
+    "7.3 Create `src/components/RelocateBanner.tsx`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869143543
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869820564
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869897509
+      }
+    ],
+    "7.4 Create `src/components/PositionStatus.tsx`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869143784
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869821789
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869898685
+      }
+    ],
+    "7.5 Create `src/components/ArrivalCard.tsx`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869143980
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869822436
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869899459
+      }
+    ],
+    "7.6 Create `src/components/RouteGuidance.tsx`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869144144
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869903463
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869981468
+      }
+    ],
+    "7.7 Create `src/components/SignalSimControls.tsx`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869144326
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869746252
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869815045
+      }
+    ],
+    "7.8 Create `src/components/useSignalMonitor.ts`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869144508
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869747139
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869816198
+      }
+    ],
+    "7.9 Create `src/components/useArrival.ts`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869144675
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869748183
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869816980
+      }
+    ],
+    "8.1 Add the `you` pane and a persistent pulsing position marker": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869144860
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869904042
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869982189
+      }
+    ],
+    "8.2 Add the optional `destinationArrived` prop for the destination ring": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869145045
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869985080
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870021412
+      }
+    ],
+    "9. Checkpoint: components ready": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869145237
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870022423
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870059652
+      }
+    ],
+    "10.1 Wire `useSignalMonitor` and the Debug simulation": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869145468
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870063247
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870113630
+      }
+    ],
+    "10.2 Render `RelocateBanner` and update the \"I'm here\" handler": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869145923
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870116948
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870166426
+      }
+    ],
+    "10.3 Render `PositionStatus` in the panel": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869146116
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870169548
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870201539
+      }
+    ],
+    "10.4 Switch the destination picker to `destinationGroups`": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869146300
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870204792
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870244521
+      }
+    ],
+    "10.5 Wire `useArrival`, `RouteGuidance`, and the arrival ring": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869146467
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870248024
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870294023
+      }
+    ],
+    "11. Final checkpoint": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869146655
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870294951
+      },
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870333822
+      }
+    ],
+    "1. Shared constants and test helper": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869227183
+      }
+    ],
+    "3. Anchor detection and arrival state machine": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869611699
+      }
+    ],
+    "4. Guidance helpers (`src/lib/guidance.ts`)": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869612948
+      }
+    ],
+    "2. Signal monitor (`src/lib/signal-monitor.ts`)": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869613795
+      }
+    ],
+    "7. Standalone components, hooks, and styles (new files, not rendered yet)": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792869981603
+      }
+    ],
+    "8. Map_View changes (`src/components/MapView.tsx`)": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870021571
+      }
+    ],
+    "10. `App.tsx` wiring (imports, hook calls, rendering, props only; each sub-task is one small commit)": [
+      {
+        "executionId": "6f1a5a33-c5fb-422d-bbdf-19bbcc55e9b4",
+        "chatSessionId": "sess_6ffd4deb-e4df-4951-be73-1a3307cd2c7a",
+        "timestamp": 1792870294133
+      }
+    ]
+  }
+}

@@ -36,3 +36,47 @@ button.ghost { background: transparent; }
 .sheet { width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); display: grid; gap: 10px; }
 .sheet h3 { margin: 0 0 4px; }
 .sheet button { font-size: 16px; padding: 12px; }
+
+/* ---- demo-ux-polish: relocate banner, position status, arrival, you-are-here ---- */
+:root { --arrival: #15803d; --arrival-bg: #dcfce7; }
+
+/* Banner + toast stack in normal flow so they never overlap (Req 2.11).
+   The container ignores pointer events so map gestures pass through around the alerts. */
+.map-alerts { position: absolute; left: 12px; right: 62px; top: 10px; z-index: 600; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.map-alerts > * { pointer-events: auto; }
+.map-alerts .toast { position: static; left: auto; right: auto; top: auto; z-index: auto; }
+
+.relocate { display: flex; align-items: flex-start; gap: 8px; background: #fff7ed; color: #7c2d12; border: 1px solid #fdba74; border-radius: 10px; padding: 10px 6px 10px 14px; box-shadow: 0 2px 6px rgba(15,23,42,.18); font-size: 14px; overflow-wrap: anywhere; white-space: normal; }
+.relocate-text { flex: 1; min-width: 0; }
+.relocate strong, .relocate-title { display: block; font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+.relocate p { margin: 0; }
+.relocate-dismiss { flex: none; min-width: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1; background: transparent; border: none; color: inherit; }
+
+.pos-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 6px; font-weight: 600; overflow-wrap: anywhere; }
+.pos-status .chip, .pos-source { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #e0e7ff; color: #3730a3; }
+.pos-floor-btn { font-size: 14px; }
+
+.dest-name { margin: 4px 0 2px; font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+
+.arrival { margin: 4px 0 8px; padding: 14px; border-radius: 12px; background: var(--arrival-bg); border: 2px solid var(--arrival); color: var(--arrival); animation: arrival-in 600ms ease-out 1 both; }
+.arrival h2, .arrival-title { margin: 0; font-size: 24px; font-weight: 800; }
+.arrival-name { margin: 4px 0 10px; font-size: 22px; font-weight: 700; color: #0f172a; overflow-wrap: anywhere; }
+.arrival button { font-size: 16px; padding: 10px 16px; min-height: 44px; }
+@keyframes arrival-in { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+
+/* Leaflet SVG path; CSS stroke overrides the stroke attribute (Req 6.7). */
+path.dest-ring.arrived { stroke: var(--arrival); }
+
+/* "You are here" divIcon, 36x36 (iconSize [36, 36]). */
+.you-marker { width: 36px; height: 36px; position: relative; background: none; border: none; }
+.you-halo { position: absolute; inset: 0; border-radius: 50%; background: rgba(37,99,235,.22); }
+.you-dot { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #2563eb; border: 3px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.you-marker.pulse .you-halo { animation: you-pulse 1.2s ease-out 1; }
+@keyframes you-pulse { 0% { transform: scale(.6); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival { animation: none; }
+  .you-marker.pulse .you-halo { animation: none; }
+}

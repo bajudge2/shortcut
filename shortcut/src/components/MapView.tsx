@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as L from 'leaflet';
 import type { Building, GraphNode, NodeKind, Position } from '../lib/types.ts';
+import { newAnchorNodeId } from '../lib/anchor.ts';
 
 interface Props {
   building: Building;
@@ -10,6 +11,8 @@ interface Props {
   destinationId: string;
   onNodeTap: (nodeId: string) => void;
   onMapTap?: (floor: string, x: number, y: number) => void;
+  /** When true, the destination ring renders in the arrival color (Req 6.7). */
+  destinationArrived?: boolean;
 }
 
 // Plan coords (x right, y down) -> Leaflet CRS.Simple (lng = x, lat = -y)
@@ -25,12 +28,13 @@ const KIND_COLOR: Record<NodeKind, string> = {
   other: '#6b7280',
 };
 
-export default function MapView({ building, floorId, position, routeNodes, destinationId, onNodeTap, onMapTap }: Props) {
+export default function MapView({ building, floorId, position, routeNodes, destinationId, onNodeTap, onMapTap, destinationArrived }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const staticLayer = useRef<L.LayerGroup | null>(null);
   const routeLayer = useRef<L.LayerGroup | null>(null);
-  const userLayer = useRef<L.LayerGroup | null>(null);
+  const youMarker = useRef<L.Marker | null>(null);
+  const prevPos = useRef<Position | null>(null);
   const cbs = useRef({ onNodeTap, onMapTap, floorId });
   cbs.current = { onNodeTap, onMapTap, floorId };
 
@@ -47,12 +51,20 @@ export default function MapView({ building, floorId, position, routeNodes, desti
     });
     staticLayer.current = L.layerGroup().addTo(map);
     routeLayer.current = L.layerGroup().addTo(map);
-    userLayer.current = L.layerGroup().addTo(map);
+    const pane = map.createPane('you');
+    pane.style.zIndex = '640';
+    pane.style.pointerEvents = 'none';
     map.on('click', (e: L.LeafletMouseEvent) => cbs.current.onMapTap?.(cbs.current.floorId, e.latlng.lng, -e.latlng.lat));
     mapRef.current = map;
     const ro = new ResizeObserver(() => map.invalidateSize());
     ro.observe(el.current);
-    return () => { ro.disconnect(); map.remove(); mapRef.current = null; };
+    return () => {
+      ro.disconnect();
+      youMarker.current?.remove();
+      youMarker.current = null;
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
 
   // draw the floor (plan, corridors, nodes)
@@ -114,20 +126,56 @@ export default function MapView({ building, floorId, position, routeNodes, desti
     flush();
     const dest = destinationId ? byId.get(destinationId) : undefined;
     if (dest && dest.floor === floorId) {
-      L.circleMarker(ll(dest.x, dest.y), { radius: 15, color: '#ef4444', weight: 3, fillOpacity: 0, interactive: false }).addTo(layer);
+      L.circleMarker(ll(dest.x, dest.y), {
+        radius: 15,
+        color: '#ef4444',
+        weight: 3,
+        fillOpacity: 0,
+        interactive: false,
+        className: destinationArrived ? 'dest-ring arrived' : 'dest-ring',
+      }).addTo(layer);
     }
-  }, [building, floorId, routeNodes, destinationId]);
+  }, [building, floorId, routeNodes, destinationId, destinationArrived]);
 
-  // "you are here"
+  // "you are here": one persistent divIcon marker in the top `you` pane (Req 2.4, 2.12, 3.3)
   useEffect(() => {
-    const layer = userLayer.current;
     const map = mapRef.current;
-    if (!layer || !map) return;
-    layer.clearLayers();
-    if (!position || position.floor !== floorId) return;
+    const prev = prevPos.current;
+    prevPos.current = position;
+    if (!map) return;
+    if (!position || position.floor !== floorId) {
+      youMarker.current?.remove();
+      return;
+    }
     const p = ll(position.x, position.y);
-    L.circleMarker(p, { radius: 18, stroke: false, fillColor: '#3b82f6', fillOpacity: 0.2, interactive: false }).addTo(layer);
-    L.circleMarker(p, { radius: 8, color: '#ffffff', weight: 3, fillColor: '#2563eb', fillOpacity: 1, interactive: false }).addTo(layer);
+    let marker = youMarker.current;
+    if (!marker) {
+      marker = L.marker(p, {
+        icon: L.divIcon({
+          className: 'you-marker',
+          html: '<span class="you-halo"></span><span class="you-dot"></span>',
+          iconSize: [36, 36],
+        }),
+        pane: 'you',
+        interactive: false,
+        keyboard: false,
+      });
+      youMarker.current = marker;
+    } else {
+      marker.setLatLng(p);
+    }
+    if (!map.hasLayer(marker)) marker.addTo(map);
+
+    // Pulse once when a new manual/Bluetooth anchor was just set (Req 5.5)
+    if (newAnchorNodeId(prev, position) !== null) {
+      const icon = marker.getElement();
+      if (icon) {
+        icon.classList.remove('pulse');
+        void icon.offsetWidth; // force reflow so the animation restarts
+        icon.classList.add('pulse');
+        icon.addEventListener('animationend', () => icon.classList.remove('pulse'), { once: true });
+      }
+    }
     if (!map.getBounds().contains(p)) map.panTo(p);
   }, [position, floorId]);
 
