@@ -13,7 +13,7 @@ iOS app = React + Vite + TypeScript web UI wrapped with Capacitor, plus ESP32 BL
 - `src/positioning/engine.ts` — single source of truth for the user's position. Every source (QR, BLE, manual, steps) only calls `setAnchor`, `onBeacon`, `onStep`, `setPoint`. Never put positioning logic in components.
 - `src/positioning/ble.ts` / `motion.ts` — device-only adapters (need a real iPhone).
 - `src/components/*`, `src/App.tsx` — UI only.
-- `firmware/esp32_beacon` — Arduino sketch; BLE local name `CNAV-<id>` + service UUID from `src/config.ts` (keep both in sync).
+- `firmware/esp32_beacon` — PlatformIO C++ project (Arduino framework), envs `esp32s3` / `esp32` / `esp32-wrover-e`. BLE local name `CNAV-<id>` + UUIDs in `src/protocol.h`, mirrored in `src/config.ts` (keep both in sync). Beacon id + calibration live in NVS and are set over BLE/serial, never hardcoded per board.
 
 ## Positioning model
 Anchors give exact fixes (QR scan, nearest BLE beacon, manual tap). Between anchors, step counting + compass moves the dot, snapped to corridors. BLE is nearest-beacon with RSSI smoothing + hysteresis, NOT trilateration (only 3 beacons, RSSI is noisy).
