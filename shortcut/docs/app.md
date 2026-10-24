@@ -1,7 +1,7 @@
 # App and components
 
 ## `App.tsx`
-Owns UI state only: destination, route options, viewed floor, toggles, debug display, and sheets. It computes routes using `src/lib/graph.ts`, supplies route nodes to `PositionEngine`, subscribes to position/navigation state, and wires device adapters to engine methods. It shows arrival/no-route/wrong-way states and retains manual “I’m here” as fallback.
+Owns UI state only: destination, route options, viewed floor, toggles, debug display, and sheets. It computes routes using `src/lib/graph.ts`, supplies route nodes to `PositionEngine`, subscribes to position/navigation state, and wires device adapters to engine methods. It shows arrival/no-route/wrong-way states and retains manual “I’m here” as fallback. The Debug panel also shows a beacon the engine is ignoring as too far from the step estimate, with its confirmation count.
 
 ## `MapView.tsx`
 Leaflet `CRS.Simple` renderer. Converts plan `(x,y)` to `(lng=x, lat=-y)`, overlays the floor image, graph, route, destination, and user marker. The retained DOM user marker transitions over 350 ms for visual smoothness; this animation does not feed back into route or position calculations.

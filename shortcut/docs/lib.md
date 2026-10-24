@@ -22,7 +22,7 @@ Everything in `src/lib/` is platform-independent and tested by `npm run test:log
 
 ## `beacon-math.ts`
 - `averageRssiBatch` averages one-second RSSI samples after dropping extreme outliers when possible.
-- `BeaconTracker` applies EMA, staleness/minimum-RSSI filtering, a dB switching margin, and consecutive-decision confirmation.
+- `BeaconTracker` applies EMA, staleness/minimum-RSSI filtering, a dB switching margin, and consecutive-decision confirmation. Only the first fix after construction/`reset()` is immediate. The current beacon is remembered through silence, so if it drops out of range another beacon still needs `switchConfirmations` fresh batches; until then `best()` returns null.
 - `parseBeaconName` extracts the short id from `CNAV-<id>`.
 
 - `BeaconFix` is the shared stable beacon observation (`id`, averaged RSSI dBm) consumed by the engine.

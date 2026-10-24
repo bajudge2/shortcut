@@ -158,6 +158,9 @@ export default function App() {
             <div>Position: {pos ? `${pos.floor} (${Math.round(pos.x)}, ${Math.round(pos.y)}) via ${pos.source}${pos.nodeId ? ` @ ${pos.nodeId}` : ''}` : 'unknown'}</div>
             <div>Heading: {motion.currentHeading === null ? '—' : `${Math.round(motion.currentHeading)}° fused`} · steps: {stepCount}</div>
             <div>Route heading error: {navigation.headingErrorDeg === null ? '—' : `${Math.round(navigation.headingErrorDeg)}°`}{navigation.wrongWay ? ' · WRONG WAY' : ''}</div>
+            {engine.pendingBeacon && (
+              <div>Ignoring {engine.pendingBeacon.id}: too far from step estimate ({engine.pendingBeacon.count}/{engine.pendingBeacon.needed})</div>
+            )}
             <div>Beacons heard: {beacons.length === 0 ? 'none' : beacons.map((b) => `${b.id} ${Math.round(b.rssi)} dBm`).join(' · ')}</div>
             <label><input type="checkbox" checked={teleport} onChange={(e) => setTeleport(e.target.checked)} /> Tap map to teleport</label>
             <button className="ghost" onClick={() => engine.clear()}>Clear position</button>

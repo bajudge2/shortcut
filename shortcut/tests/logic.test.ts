@@ -100,9 +100,12 @@ test('beacon tracker: picks strongest, hysteresis prevents flapping, stale expir
   // B2 becomes only slightly stronger -> no switch
   for (let i = 0; i < 20; i++) { t.update('B1', -70, 5000 + i * 100); t.update('B2', -67, 5000 + i * 100); }
   assert.equal(t.best(7000)!.id, 'B1');
-  // B2 remains clearly stronger on the next one-second decision -> confirmed switch.
+  // B1 fades out of range and B2 is clearly stronger: it still needs a second fresh
+  // one-second batch before taking over (no instant hand-off).
   for (let i = 0; i < 30; i++) { t.update('B1', -85, 7000 + i * 100); t.update('B2', -55, 7000 + i * 100); }
-  assert.equal(t.best(10000)!.id, 'B2');
+  assert.equal(t.best(10000), null);
+  t.update('B2', -55, 11000);
+  assert.equal(t.best(11000)!.id, 'B2');
   // nothing heard for a long time -> null
   assert.equal(t.best(60000), null);
 });
@@ -116,6 +119,23 @@ test('beacon switch confirmation requires a fresh RSSI batch', () => {
   assert.equal(t.best(2000)!.id, 'B1', 'an empty batch must not confirm stale RSSI');
   t.update('B2', -40, 2000);
   assert.equal(t.best(2000)!.id, 'B2', 'second fresh challenger batch confirms switch');
+});
+
+test('beacon tracker: current beacon briefly out of range does not hand over to the next one', () => {
+  const t = new BeaconTracker();
+  t.update('B2', -60, 0);
+  assert.equal(t.best(0)!.id, 'B2');
+  // B2 silent long enough to go stale; B3 heard once -> not confirmed, report nothing
+  t.update('B3', -70, 5000);
+  assert.equal(t.best(5000), null);
+  // B2 comes back -> stays B2
+  t.update('B2', -60, 6000);
+  assert.equal(t.best(6000)!.id, 'B2');
+  // if B2 is really gone and B3 persists, it still takes over after fresh confirmations
+  t.update('B3', -70, 11000);
+  assert.equal(t.best(11000), null);
+  t.update('B3', -70, 12000);
+  assert.equal(t.best(12000)!.id, 'B3');
 });
 
 test('beacon tracker ignores very weak signals', () => {
@@ -237,6 +257,47 @@ test('brief beacon loss cannot bypass same-beacon correction gates', () => {
   engine.onBeacon(null);
   engine.onBeacon({ id: 'B1', rssi: -75 });
   assert.deepEqual(engine.position, before, 'weak reacquisition must not snap back to B1');
+});
+
+test('dead reckoning rejects a far beacon while walking B1 -> B2, but accepts the next one', () => {
+  // B1 at x=300, B2 at x=500 (20 m), B3 at x=900 (60 m), all on one corridor
+  const line: Building = {
+    ...building,
+    beacons: [
+      { id: 'B1', node: 'f1_j1' },
+      { id: 'B2', node: 'f1_j2' },
+      { id: 'B3', node: 'f1_east_exit' },
+    ],
+  };
+  const engine = new PositionEngine(line, 0.7);
+  engine.clear();
+  engine.onBeacon({ id: 'B1', rssi: -60 }); // first fix accepted
+  assert.equal(engine.position!.nodeId, 'f1_j1');
+  for (let i = 1; i <= 20; i++) engine.onStep({ headingDeg: 90, accelerationPeak: 2, timestamp: i * 500 });
+  const walked = engine.position!;
+  assert.ok(Math.abs(walked.x - 440) < 1e-6, `x=${walked.x}`); // 14 m east
+
+  // B2 drops out and far-away B3 is loudest for a few seconds -> keep the step estimate
+  for (let i = 0; i < 5; i++) engine.onBeacon({ id: 'B3', rssi: -74 });
+  assert.deepEqual(engine.position, walked);
+  assert.equal(engine.pendingBeacon!.id, 'B3');
+
+  // B2 is plausible (6 m ahead) -> accepted immediately and the pending B3 is dropped
+  engine.onBeacon({ id: 'B2', rssi: -72 });
+  assert.equal(engine.position!.nodeId, 'f1_j2');
+  assert.equal(engine.pendingBeacon, null);
+});
+
+test('a persistent implausible beacon is eventually accepted (recovery when truly lost)', () => {
+  const engine = new PositionEngine(building, 0.7);
+  engine.clear();
+  engine.onBeacon({ id: 'B1', rssi: -60 }); // f1_j2
+  for (let i = 1; i < 6; i++) {
+    engine.onBeacon({ id: 'B3', rssi: -70 }); // other floor -> implausible
+    assert.equal(engine.position!.nodeId, 'f1_j2', `report ${i}`);
+  }
+  engine.onBeacon({ id: 'B3', rssi: -70 });
+  assert.equal(engine.position!.nodeId, 'f2_j2');
 });
 
 test('parseDeepLink', () => {
