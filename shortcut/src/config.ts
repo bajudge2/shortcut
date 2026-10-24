@@ -14,8 +14,8 @@ export const BEACON_STATUS_CHAR_UUID = '7a1c0003-5f3e-4b8a-9d2e-0c4a5b6d7e8f';
  */
 export const BEACON_MFG_COMPANY_ID = 0xffff;
 
-/** Meters the dot moves per detected step. Raised from 0.7: on-site the dot lagged behind real walking pace. */
-export const STEP_LENGTH_M = 0.8;
+/** Meters the dot moves per detected step. Raised from 0.7, then 0.8: on site the dot still lagged slightly behind walking pace. */
+export const STEP_LENGTH_M = 0.9;
 
 /** Beacons silent this long while scanning => "Bluetooth signal lost". */
 export const SIGNAL_QUIET_THRESHOLD_MS = 15_000;
