@@ -177,27 +177,6 @@
       "x": 202,
       "y": 320,
       "kind": "junction"
-    },
-    {
-      "id": "BE1",
-      "floor": "f1",
-      "x": 347,
-      "y": 372,
-      "kind": "other"
-    },
-    {
-      "id": "BE2",
-      "floor": "f1",
-      "x": 186,
-      "y": 366,
-      "kind": "other"
-    },
-    {
-      "id": "BE3",
-      "floor": "f1",
-      "x": 239,
-      "y": 224,
-      "kind": "other"
     }
   ],
   "edges": [
@@ -351,17 +330,8 @@
     }
   ],
   "beacons": [
-    {
-      "id": "B1",
-      "node": "BE1"
-    },
-    {
-      "id": "B2",
-      "node": "BE2"
-    },
-    {
-      "id": "B3",
-      "node": "BE3"
-    }
+    { "id": "B1", "node": "f1_junction_15" },
+    { "id": "B2", "node": "f1_junction_18" },
+    { "id": "B3", "node": "f1_junction_4" }
   ]
 }
