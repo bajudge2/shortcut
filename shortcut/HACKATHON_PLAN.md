@@ -13,7 +13,7 @@ Take Shortcut from "tested pure logic + unverified UI/adapters + demo map" to a 
 - Position comes from BLE beacons, step counting, and manual "I'm here" taps.
 
 ## Background (from reading the code)
-- `src/lib/*` is pure and covered by 27 Node tests (`npm run test:logic`) — routing (Dijkstra), directions, `BeaconTracker` (EMA + hysteresis), PDR math, deep-link parsing. Solid foundation; keep it green.
+- `src/lib/*` is pure and covered by 27 Node tests (`npm run test:logic`, now 72 with the demo-ux-polish and map-focus-view tests) — routing (Dijkstra), directions, `BeaconTracker` (EMA + hysteresis), PDR math, deep-link parsing. Solid foundation; keep it green.
 - `PositionEngine` (`engine.ts`) is the single source of truth; all sources (`setAnchor`, `onBeacon`, `onStep`, `setPoint`) funnel through it. BLE remains nearest-beacon (not trilateration): one-second RSSI batches, EMA, hysteresis, and two consecutive decisions select a stable fix. Accelerometer-confirmed steps use compass+gyroscope fused headings for dead reckoning; a close current beacon periodically corrects drift.
 - `App.tsx` already wires destination select, BLE toggle, steps toggle, accessible routing, a Debug panel (live RSSI, heading, step count, teleport, clear), arrival message, and `?at=/?to=` deep links. Toasts exist but there's no explicit "BLE signal lost -> relocate" prompt yet (step 6 of KIRO_PROMPT).
 - `ble.ts`, `motion.ts`, `MapView.tsx` were authored without ever being run -> typecheck/build errors and Leaflet/Capacitor typing issues are likely. This is where Lane A's first hours go.
@@ -56,7 +56,7 @@ Lane A = Windows machine. Lane B = teammate on Mac. Times are budget guidance wi
 - [ ] **Task 1 (Lane A, ~60 min): Get the build green.**
   Objective: `npm install`, `npm run typecheck`, `npm run test:logic`, `npm run build`, and `npm run dev` all succeed with no behavior changes beyond fixing breakage.
   Guidance: Fix type/build errors in the likely spots — `src/components/MapView.tsx` (Leaflet `@types/leaflet` usage, `CRS.Simple`, layer typing), `src/positioning/ble.ts` (`@capacitor-community/bluetooth-le` `ScanResult`/`BleClient` types), and `motion.ts` (`WakeLockSentinel`, iOS permission casts). Don't change positioning behavior; only make it compile and run. Keep `src/lib/*` pure.
-  Test: `npm run test:logic` stays at 27 passing; `tsc --noEmit` clean; dev server renders the map and lets you pick a destination, tap a node -> "I'm here", and get a route in the browser.
+  Test: `npm run test:logic` stays green (72 passing); `tsc --noEmit` clean; dev server renders the map and lets you set your location from "I'm at", pick a destination, and get a route in the browser.
   Demo: In the browser, pick a destination, tap-to-teleport (Debug), see the route and turn-by-turn update live.
 
 - [ ] **Task 1b (Lane B, start once Task 1's `npm run build` is green): iOS app on the iPhone.**
@@ -73,7 +73,7 @@ Lane A = Windows machine. Lane B = teammate on Mac. Times are budget guidance wi
 
 - [ ] **Task 3 (Lane A, ~60 min): Relocate / signal-lost UX + demo polish.**
   Objective: Implement KIRO_PROMPT step 6 — a clear "you are here" state (verify), a prominent arrival message (polish), search/destination UX pass, and a new "BLE signal lost -> relocate" prompt when beacons go quiet. Keep manual "I'm here" always available as fallback.
-  Guidance: Add a lightweight "signal lost" state driven by `onBeacon(null)` persisting for N seconds while BLE is on (surface a toast/banner suggesting "Tap your location on the map"). Keep all logic in `App.tsx`/components; position logic stays in `PositionEngine`. No new dependencies without flagging. Make small commits.
+  Guidance: Add a lightweight "signal lost" state driven by `onBeacon(null)` persisting for N seconds while BLE is on (surface a banner telling the user to choose where they are from "I'm at"). Keep all logic in `App.tsx`/components; position logic stays in `PositionEngine`. No new dependencies without flagging. Make small commits.
   Test: In the browser, toggle through states — no position, no destination, routing, arrived, no-route, and simulate signal-lost (BLE path is native-only, so stub/verify the state transition logic where feasible). `test:logic` stays green.
   Demo: Walking through the app shows a clean "you are here," a satisfying arrival message, and a relocate prompt when BLE drops — with manual "I'm here" always recovering position.
 
@@ -85,8 +85,8 @@ Lane A = Windows machine. Lane B = teammate on Mac. Times are budget guidance wi
 
 - [ ] **Task 5 (Lane A, ~30 min): Demo mode + shot-list support.**
   Objective: Make the planned video reliably reproducible, and ensure a one-tap safe fallback exists so filming never stalls.
-  Guidance: Confirm the teleport/"I'm here"/Clear-position controls give a clean reset between takes. Verify the `?at=&to=` deep link can pre-stage a scene (open the app already positioned and routing) for the "classic nav" segment. If anything about the shot list is unclear, lock it here: Scene 1 (classic) tap "I'm here" (or deep link) -> route + turn-by-turn -> walk -> arrive; Scene 2 (BLE) Debug panel live RSSI -> walk between beacons -> dot snaps -> nav view. No behavior changes to `PositionEngine`.
-  Test: Each scene can be set up from a clean state in under ~15 seconds; fallback (manual tap "I'm here") recovers instantly if BLE misbehaves on camera.
+  Guidance: Confirm the teleport/"I'm here"/Clear-position controls give a clean reset between takes. Verify the `?at=&to=` deep link can pre-stage a scene (open the app already positioned and routing) for the "classic nav" segment. If anything about the shot list is unclear, lock it here: Scene 1 (classic) pick "I'm at" (or deep link) -> route + turn-by-turn -> walk -> arrive; Scene 2 (BLE) Debug panel live RSSI -> walk between beacons -> dot snaps -> nav view. No behavior changes to `PositionEngine`.
+  Test: Each scene can be set up from a clean state in under ~15 seconds; fallback (choosing a place from "I'm at") recovers instantly if BLE misbehaves on camera.
   Demo: A dry run of both scenes end-to-end using teleport in the browser, then the same on the phone.
 
 - [ ] **Task 6 (Both, ~45 min): Final sync, film, and cut the 3-minute video.**

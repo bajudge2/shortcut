@@ -6,7 +6,7 @@ interface Props {
 }
 
 const ANNOUNCEMENT =
-  'Bluetooth signal lost. Tap where you are on the map, then choose I’m here.';
+  'Bluetooth signal lost. Choose where you are from I’m at at the top of the screen.';
 
 // Always mounted inside `.map-alerts` so the live region exists before the
 // banner first appears. Returns a fragment: while hidden, only the 1px
@@ -20,7 +20,7 @@ export default function RelocateBanner({ visible, onDismiss }: Props) {
         <div className="relocate">
           <div className="relocate-text">
             <strong className="relocate-title">Bluetooth signal lost</strong>
-            <p>Tap where you are on the map, then choose “I’m here”.</p>
+            <p>Choose where you are from “I’m at” at the top of the screen.</p>
           </div>
           <button
             type="button"

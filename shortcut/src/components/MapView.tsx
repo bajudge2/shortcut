@@ -1,7 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as L from 'leaflet';
-import type { Building, GraphNode, NodeKind, Position } from '../lib/types.ts';
+import type { Building, Position } from '../lib/types.ts';
 import { newAnchorNodeId } from '../lib/anchor.ts';
+import { focusLayers, routeKey } from '../lib/focus-layers.ts';
+import { followView, type PlanRect } from '../lib/follow-view.ts';
+import {
+  INITIAL_FOLLOW_MODE, showRecenter, stepFollow, viewCommand,
+  type FollowEvent, type FollowMode,
+} from '../lib/follow-state.ts';
+import RecenterButton from './RecenterButton.tsx';
 
 interface Props {
   building: Building;
@@ -9,34 +16,38 @@ interface Props {
   position: Position | null;
   routeNodes: string[];
   destinationId: string;
-  onNodeTap: (nodeId: string) => void;
   onMapTap?: (floor: string, x: number, y: number) => void;
-  /** When true, the destination ring renders in the arrival color (Req 6.7). */
+  /** When true, the destination ring renders in the arrival color. */
   destinationArrived?: boolean;
 }
 
 // Plan coords (x right, y down) -> Leaflet CRS.Simple (lng = x, lat = -y)
 const ll = (x: number, y: number) => L.latLng(-y, x);
+const rectToBounds = (r: PlanRect) => L.latLngBounds(ll(r.minX, r.maxY), ll(r.maxX, r.minY));
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
 
-const KIND_COLOR: Record<NodeKind, string> = {
-  junction: '#9aa3b2',
-  room: '#2f6fed',
-  stairs: '#e08a00',
-  elevator: '#8a3ffc',
-  entrance: '#16a34a',
-  restroom: '#0891b2',
-  other: '#6b7280',
-};
-
-export default function MapView({ building, floorId, position, routeNodes, destinationId, onNodeTap, onMapTap, destinationArrived }: Props) {
+/**
+ * Decluttered map: the floor plan as the base layer, plus only the route, the
+ * destination, and the user. While a route is active it follows the user;
+ * a manual pan/zoom pauses following until Recenter is tapped.
+ */
+export default function MapView({ building, floorId, position, routeNodes, destinationId, onMapTap, destinationArrived }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const staticLayer = useRef<L.LayerGroup | null>(null);
-  const routeLayer = useRef<L.LayerGroup | null>(null);
+  const baseLayer = useRef<L.LayerGroup | null>(null);
+  const focusLayer = useRef<L.LayerGroup | null>(null);
   const youMarker = useRef<L.Marker | null>(null);
   const prevPos = useRef<Position | null>(null);
-  const cbs = useRef({ onNodeTap, onMapTap, floorId });
-  cbs.current = { onNodeTap, onMapTap, floorId };
+  const viewPrev = useRef<{ floorId: string; destinationId: string; position: Position | null } | null>(null);
+  const programmatic = useRef(false);
+  const cbs = useRef({ onMapTap, floorId });
+  cbs.current = { onMapTap, floorId };
+
+  const [mode, setMode] = useState<FollowMode>(INITIAL_FOLLOW_MODE);
+  const rKey = routeKey(routeNodes);
+  // rKey stands in for routeNodes so a new-but-equal array doesn't recompute
+  const follow = useMemo(() => followView(building, floorId, position, routeNodes), [building, floorId, position, rKey]);
 
   // create map once
   useEffect(() => {
@@ -49,12 +60,22 @@ export default function MapView({ building, floorId, position, routeNodes, desti
       zoomControl: false,
       attributionControl: false,
     });
-    staticLayer.current = L.layerGroup().addTo(map);
-    routeLayer.current = L.layerGroup().addTo(map);
-    const pane = map.createPane('you');
-    pane.style.zIndex = '640';
-    pane.style.pointerEvents = 'none';
+    const base = map.createPane('base');
+    base.style.zIndex = '250';
+    base.style.pointerEvents = 'none';
+    baseLayer.current = L.layerGroup().addTo(map);
+    focusLayer.current = L.layerGroup().addTo(map);
+    const you = map.createPane('you');
+    you.style.zIndex = '640';
+    you.style.pointerEvents = 'none';
+
+    // User pan/zoom pauses following; our own fitBounds/panTo set `programmatic` first.
+    const pause = () => setMode((m) => stepFollow(m, 'userMove'));
+    map.on('movestart', () => { if (!programmatic.current) pause(); });
+    map.on('dragstart', pause); // Leaflet fires this only for user drags
+    map.on('moveend', () => { programmatic.current = false; });
     map.on('click', (e: L.LeafletMouseEvent) => cbs.current.onMapTap?.(cbs.current.floorId, e.latlng.lng, -e.latlng.lat));
+
     mapRef.current = map;
     const ro = new ResizeObserver(() => map.invalidateSize());
     ro.observe(el.current);
@@ -67,77 +88,96 @@ export default function MapView({ building, floorId, position, routeNodes, desti
     };
   }, []);
 
-  // draw the floor (plan, corridors, nodes)
+  // base layer: the floor plan image, or a plain outline if there is none / it fails to load
   useEffect(() => {
     const map = mapRef.current;
-    const layer = staticLayer.current;
+    const layer = baseLayer.current;
     const floor = building.floors.find((f) => f.id === floorId);
     if (!map || !layer || !floor) return;
     layer.clearLayers();
     const bounds = L.latLngBounds(ll(0, floor.height), ll(floor.width, 0));
-
-    L.rectangle(bounds, { color: '#cbd5e1', weight: 1, fillColor: '#f8fafc', fillOpacity: 1, interactive: false }).addTo(layer);
-    if (floor.image) L.imageOverlay(floor.image, bounds, { interactive: false }).addTo(layer);
-
-    const byId = new Map(building.nodes.map((n) => [n.id, n]));
-    for (const e of building.edges) {
-      const a = byId.get(e.from)!;
-      const b = byId.get(e.to)!;
-      if (a.floor !== floorId || b.floor !== floorId) continue;
-      L.polyline([ll(a.x, a.y), ll(b.x, b.y)], {
-        color: floor.image ? '#94a3b8' : '#e2e8f0',
-        weight: floor.image ? 3 : 18,
-        opacity: floor.image ? 0.7 : 1,
-        lineCap: 'round',
-        interactive: false,
-      }).addTo(layer);
+    const outline = () => L.rectangle(bounds, {
+      pane: 'base', color: '#cbd5e1', weight: 1, fillColor: '#f8fafc', fillOpacity: 1, interactive: false,
+    });
+    if (floor.image) {
+      const img = L.imageOverlay(floor.image, bounds, { pane: 'base', opacity: 1, interactive: false });
+      img.once('error', () => {
+        if (cbs.current.floorId !== floor.id) return; // user switched floors meanwhile
+        layer.removeLayer(img);
+        outline().addTo(layer);
+      });
+      img.addTo(layer);
+    } else {
+      outline().addTo(layer);
     }
-    for (const n of building.nodes as GraphNode[]) {
-      if (n.floor !== floorId) continue;
-      const m = L.circleMarker(ll(n.x, n.y), {
-        radius: n.kind === 'junction' ? 4 : 8,
-        color: '#ffffff',
-        weight: 2,
-        fillColor: KIND_COLOR[n.kind] ?? '#6b7280',
-        fillOpacity: 1,
-      }).addTo(layer);
-      if (n.name) m.bindTooltip(n.name, { permanent: true, direction: 'top', offset: [0, -6], className: 'node-label' });
-      m.on('click', (ev) => { L.DomEvent.stopPropagation(ev); cbs.current.onNodeTap(n.id); });
-    }
-    map.fitBounds(bounds, { padding: [10, 10] });
   }, [building, floorId]);
 
-  // route + destination
+  // overlays: route line, start dot, destination ring + label
   useEffect(() => {
-    const layer = routeLayer.current;
+    const layer = focusLayer.current;
     if (!layer) return;
+    const f = focusLayers(building, floorId, position, routeNodes, destinationId);
     layer.clearLayers();
-    const byId = new Map(building.nodes.map((n) => [n.id, n]));
-    let run: L.LatLng[] = [];
-    const flush = () => {
-      if (run.length > 1) L.polyline(run, { color: '#ef4444', weight: 6, opacity: 0.9, dashArray: '2 10', lineCap: 'round', interactive: false }).addTo(layer);
-      run = [];
-    };
-    for (const id of routeNodes) {
-      const n = byId.get(id);
-      if (!n) continue;
-      if (n.floor === floorId) run.push(ll(n.x, n.y)); else flush();
+    for (const seg of f.segments) {
+      const pts = seg.map((p) => ll(p.x, p.y));
+      L.polyline(pts, { color: '#ffffff', weight: 10, opacity: 0.9, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(layer);
+      L.polyline(pts, { color: '#dc2626', weight: 6, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false, className: 'route-line' }).addTo(layer);
     }
-    flush();
-    const dest = destinationId ? byId.get(destinationId) : undefined;
-    if (dest && dest.floor === floorId) {
-      L.circleMarker(ll(dest.x, dest.y), {
-        radius: 15,
-        color: '#ef4444',
-        weight: 3,
-        fillOpacity: 0,
-        interactive: false,
-        className: destinationArrived ? 'dest-ring arrived' : 'dest-ring',
+    if (f.start) {
+      L.circleMarker(ll(f.start.x, f.start.y), {
+        radius: 6, color: '#dc2626', weight: 3, fillColor: '#ffffff', fillOpacity: 1, interactive: false, className: 'start-dot',
       }).addTo(layer);
     }
-  }, [building, floorId, routeNodes, destinationId, destinationArrived]);
+    if (f.destination) {
+      L.circleMarker(ll(f.destination.x, f.destination.y), {
+        radius: 15, color: '#ef4444', weight: 3, fillOpacity: 0, interactive: false,
+        className: destinationArrived ? 'dest-ring arrived' : 'dest-ring',
+      })
+        .bindTooltip(f.destination.label, { permanent: true, direction: 'top', offset: [0, -16], className: 'dest-label' })
+        .addTo(layer);
+    }
+    // position is deliberately not a dependency: the overlays only depend on the route
+  }, [building, floorId, rKey, destinationId, destinationArrived]);
 
-  // "you are here": one persistent divIcon marker in the top `you` pane (Req 2.4, 2.12, 3.3)
+  // view: follow the user, fit the plan, or reveal a new anchor (exactly one per change)
+  useEffect(() => {
+    const map = mapRef.current;
+    const floor = building.floors.find((fl) => fl.id === floorId);
+    if (!map || !floor) return;
+    const prev = viewPrev.current;
+    viewPrev.current = { floorId, destinationId, position };
+    const floorChanged = prev === null || prev.floorId !== floorId;
+    const anchor = position?.floor === floorId && newAnchorNodeId(prev?.position ?? null, position) !== null;
+
+    const events: FollowEvent[] = [];
+    if (prev !== null && prev.floorId !== floorId) events.push('floorChange');
+    if (prev !== null && prev.destinationId !== destinationId) events.push('destChange');
+    if (anchor) events.push('newAnchor');
+    const next = events.reduce(stepFollow, mode);
+    if (next !== mode) setMode(next);
+
+    const cmd = viewCommand(next, follow, floorChanged, anchor);
+    const animate = !prefersReducedMotion();
+    const move = (fn: () => void) => { programmatic.current = true; fn(); };
+    const planBounds = L.latLngBounds(ll(0, floor.height), ll(floor.width, 0));
+    switch (cmd.kind) {
+      case 'follow':
+        move(() => map.fitBounds(rectToBounds(cmd.rect), { padding: [24, 24], maxZoom: map.getMaxZoom(), animate }));
+        break;
+      case 'plan':
+        move(() => map.fitBounds(planBounds, { padding: [10, 10], animate }));
+        break;
+      case 'reveal': {
+        const p = ll(position!.x, position!.y);
+        if (!map.getBounds().contains(p)) move(() => map.panTo(p, { animate }));
+        break;
+      }
+      case 'none':
+        break;
+    }
+  }, [building, floorId, position, rKey, destinationId, mode, follow]);
+
+  // "you are here": one persistent divIcon marker in the top `you` pane
   useEffect(() => {
     const map = mapRef.current;
     const prev = prevPos.current;
@@ -166,7 +206,7 @@ export default function MapView({ building, floorId, position, routeNodes, desti
     }
     if (!map.hasLayer(marker)) marker.addTo(map);
 
-    // Pulse once when a new manual/Bluetooth anchor was just set (Req 5.5)
+    // Pulse once when a new manual/Bluetooth anchor was just set
     if (newAnchorNodeId(prev, position) !== null) {
       const icon = marker.getElement();
       if (icon) {
@@ -176,8 +216,14 @@ export default function MapView({ building, floorId, position, routeNodes, desti
         icon.addEventListener('animationend', () => icon.classList.remove('pulse'), { once: true });
       }
     }
-    if (!map.getBounds().contains(p)) map.panTo(p);
   }, [position, floorId]);
 
-  return <div ref={el} className="map" />;
+  return (
+    <>
+      <div ref={el} className="map" />
+      {showRecenter(mode, follow) && (
+        <RecenterButton onRecenter={() => setMode((m) => stepFollow(m, 'recenter'))} />
+      )}
+    </>
+  );
 }

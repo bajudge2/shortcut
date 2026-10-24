@@ -7,7 +7,7 @@ Read `README.md` and `.kiro/steering/project.md` first; they describe the archit
 - React + Vite + TypeScript UI wrapped with Capacitor for iOS (we all have iPhones and one Mac).
 - Positioning: ESP32 BLE beacons (nearest-beacon with RSSI smoothing), manual "I'm here" taps, and step-counting dead reckoning, all feeding `PositionEngine` (`src/positioning/engine.ts`).
 - Routing: Dijkstra over a node/edge graph in `src/data/building.json`, accessible-route toggle, turn-by-turn text.
-- Pure logic in `src/lib` is tested: `npm run test:logic` (27 passing). The UI, BLE, and motion adapters were written without being run (the authoring sandbox had no npm or Xcode access), so expect to debug them.
+- Pure logic in `src/lib` is tested: `npm run test:logic` (72 passing). The UI, BLE, and motion adapters were written without being run (the authoring sandbox had no npm or Xcode access), so expect to debug them.
 - Hardware: 3 ESP32 boards, firmware in `firmware/esp32_beacon`.
 
 ## Do these in order

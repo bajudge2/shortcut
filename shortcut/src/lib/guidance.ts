@@ -104,3 +104,10 @@ export function guidanceFor(i: {
   if (!i.hasRoute) return { kind: 'noRoute', destName: i.destName };
   return { kind: 'route', destName: i.destName };
 }
+
+/** Location_Picker value (Req 4.6, 4.7): position.nodeId when it is listed in `groups`, otherwise "". */
+export function locationPickerValue(groups: readonly DestinationGroup[], position: Position | null): string {
+  const id = position?.nodeId;
+  if (!id) return '';
+  return groups.some((g) => g.nodes.some((n) => n.id === id)) ? id : '';
+}

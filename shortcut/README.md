@@ -24,8 +24,9 @@ npm run test:logic      # 18 tests, should all pass
 npm run dev             # dev server: open in the Mac browser / phone Safari (no BLE there)
 ```
 
-In the browser you can already: pick a destination, tap a node -> "I'm here", get routes,
-turn on Debug -> "Tap map to teleport". BLE needs the iOS app.
+In the browser you can already: set your location from "I'm at", pick a destination from "Where to?",
+get a route (the map follows you; drag to look around, then "Recenter"), and turn on Debug -> "Tap map to
+teleport" or "Simulate Bluetooth". Real BLE needs the iOS app.
 To pre-stage a demo scene, open the app with `?at=<nodeId>&to=<nodeId>` (start position + destination).
 
 ## 2. Build the iOS app

@@ -21,18 +21,18 @@ export default function RouteGuidance({ positionKnown, destNode, route, steps, a
   let body = null;
   switch (g.kind) {
     case 'needPosition':
-      body = <p className="hint">Turn on Bluetooth, or tap a place on the map and choose “I’m here”.</p>;
+      body = <p className="hint">Turn on Bluetooth, or choose where you are from “I’m at”.</p>;
       break;
     case 'needPositionForDest':
       body = (
         <>
           <p className="dest-name">{g.destName}</p>
-          <p className="hint">Tap where you are on the map and choose “I’m here”.</p>
+          <p className="hint">Choose where you are from “I’m at”.</p>
         </>
       );
       break;
     case 'needDest':
-      body = <p className="hint">Choose a destination above, or tap a room and choose “Navigate here”.</p>;
+      body = <p className="hint">Choose a destination from “Where to?”.</p>;
       break;
     case 'noRoute':
       body = (

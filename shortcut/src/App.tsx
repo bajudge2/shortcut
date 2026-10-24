@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import buildingJson from './data/building.json';
 import { BEACON_NAME_PREFIX, BEACON_SERVICE_UUID, STEP_LENGTH_M } from './config.ts';
-import { describeRoute, findRoute, nearestNode, nodeLabel } from './lib/graph.ts';
+import { describeRoute, findRoute, nearestNode } from './lib/graph.ts';
 import { destinationGroups, destinationName } from './lib/guidance.ts';
 import { parseDeepLink } from './lib/deeplink.ts';
 import type { Building, Position } from './lib/types.ts';
@@ -10,6 +10,7 @@ import { PositionEngine, type NavigationState } from './positioning/engine.ts';
 import { BleLocator, type BeaconSnapshot } from './positioning/ble.ts';
 import { MotionSensors } from './positioning/motion.ts';
 import MapView from './components/MapView.tsx';
+import LocationPicker from './components/LocationPicker.tsx';
 import SignalSimControls from './components/SignalSimControls.tsx';
 import RelocateBanner from './components/RelocateBanner.tsx';
 import PositionStatus from './components/PositionStatus.tsx';
@@ -30,7 +31,6 @@ export default function App() {
   const [dest, setDest] = useState<string>(() => localStorage.getItem(DEST_KEY) ?? '');
   const [accessible, setAccessible] = useState(false);
   const [viewFloor, setViewFloor] = useState<string>(engine.position?.floor ?? building.floors[0].id);
-  const [sheetNode, setSheetNode] = useState<string | null>(null);
   const [bleOn, setBleOn] = useState(false);
   const [stepsOn, setStepsOn] = useState(false);
   const [debug, setDebug] = useState(false);
@@ -96,11 +96,19 @@ export default function App() {
     } catch (e) { flash(e instanceof Error ? e.message : String(e)); }
   };
 
-  const sheetNodeObj = sheetNode ? engine.idx.nodeById.get(sheetNode) : undefined;
+  // "I'm at": manual position fix through the engine
+  const chooseLocation = (id: string) => {
+    const n = engine.idx.nodeById.get(id);
+    if (!n) return;
+    engine.setAnchor(id, 'manual');
+    signal.notifyManualAnchor();
+    setViewFloor(n.floor);
+  };
 
   return (
     <div className="app">
       <header className="top">
+        <LocationPicker groups={groups} position={pos} onSelect={chooseLocation} />
         <select value={dest} onChange={(e) => setDest(e.target.value)} aria-label="Destination">
           <option value="">Where to?</option>
           {groups.map((g) => (
@@ -111,7 +119,7 @@ export default function App() {
             </optgroup>
           ))}
         </select>
-        {dest && <button className="ghost" onClick={() => setDest('')}>✕</button>}
+        {dest && <button className="ghost" aria-label="Clear destination" onClick={() => setDest('')}>✕</button>}
       </header>
 
       <div className="map-wrap">
@@ -122,7 +130,6 @@ export default function App() {
           routeNodes={route?.nodes ?? []}
           destinationId={dest}
           destinationArrived={arrival.shown}
-          onNodeTap={setSheetNode}
           onMapTap={teleport ? (f, x, y) => engine.setPoint(f, x, y) : undefined}
         />
         <div className="floors">
@@ -173,17 +180,6 @@ export default function App() {
           </div>
         )}
       </section>
-
-      {sheetNodeObj && (
-        <div className="sheet-backdrop" onClick={() => setSheetNode(null)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h3>{nodeLabel(sheetNodeObj)}</h3>
-            <button onClick={() => { setDest(sheetNodeObj.id); setSheetNode(null); }}>Navigate here</button>
-            <button onClick={() => { engine.setAnchor(sheetNodeObj.id, 'manual'); signal.notifyManualAnchor(); setViewFloor(sheetNodeObj.floor); setSheetNode(null); }}>I’m here</button>
-            <button className="ghost" onClick={() => setSheetNode(null)}>Cancel</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
