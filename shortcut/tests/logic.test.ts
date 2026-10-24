@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { indexBuilding, findRoute, describeRoute, snapToGraph, nearestNode, destinations } from '../src/lib/graph.ts';
 import { BeaconTracker, parseBeaconName } from '../src/lib/beacon-math.ts';
 import { advanceStep, StepDetector, HeadingFilter } from '../src/lib/pdr-math.ts';
-import { parseAnchor } from '../src/lib/anchor.ts';
+import { parseDeepLink } from '../src/lib/deeplink.ts';
 import type { Building, Position } from '../src/lib/types.ts';
 
 // Real map: only checked for consistency, so editing it never breaks the logic tests below.
@@ -19,6 +19,21 @@ test('building data is internally consistent', () => {
   for (const e of realBuilding.edges) assert.ok(ids.has(e.from) && ids.has(e.to), `${e.from}->${e.to}`);
   for (const b of realBuilding.beacons) assert.ok(ids.has(b.node), `beacon ${b.id}`);
   for (const n of realBuilding.nodes) assert.ok(realBuilding.floors.some((f) => f.id === n.floor));
+});
+
+test('real map: every node is on its plan and connected, every destination reachable', () => {
+  const realIdx = indexBuilding(realBuilding);
+  const linked = new Set(realBuilding.edges.flatMap((e) => [e.from, e.to]));
+  for (const n of realBuilding.nodes) {
+    const f = realBuilding.floors.find((fl) => fl.id === n.floor)!;
+    assert.ok(n.x >= 0 && n.y >= 0 && n.x <= f.width && n.y <= f.height, `${n.id} is outside floor ${f.id}`);
+    // an unconnected node can become the route start (nearest node) and make every route fail
+    assert.ok(linked.has(n.id), `${n.id} has no edges`);
+  }
+  const dests = destinations(realBuilding);
+  for (const a of dests) for (const b of dests) {
+    if (a.id !== b.id) assert.ok(findRoute(realIdx, a.id, b.id, {}), `no route ${a.id} -> ${b.id}`);
+  }
 });
 
 test('same-floor route and distance', () => {
@@ -95,6 +110,13 @@ test('beacon tracker ignores very weak signals', () => {
   assert.equal(t.best(100), null);
 });
 
+test('beacon tracker does not anchor to a distant beacon (~20 m away)', () => {
+  const t = new BeaconTracker();
+  for (let i = 0; i < 10; i++) t.update('B1', -88, i * 200);
+  assert.equal(t.best(2000), null);
+  assert.equal(t.snapshot(2000).length, 1, 'still shown in the debug panel');
+});
+
 test('parseBeaconName', () => {
   assert.equal(parseBeaconName('CNAV-B1', 'CNAV-'), 'B1');
   assert.equal(parseBeaconName('Other', 'CNAV-'), null);
@@ -102,7 +124,7 @@ test('parseBeaconName', () => {
 });
 
 test('PDR walks east along the corridor and stays snapped', () => {
-  let pos: Position = { floor: 'f1', x: 300, y: 300, nodeId: 'f1_j1', source: 'qr', timestamp: 0 };
+  let pos: Position = { floor: 'f1', x: 300, y: 300, nodeId: 'f1_j1', source: 'manual', timestamp: 0 };
   for (let i = 0; i < 10; i++) pos = advanceStep(idx, pos, 90, 0.7, i); // east, 10 steps = 7 m = 70 units
   assert.ok(Math.abs(pos.x - 370) < 1e-6, `x=${pos.x}`);
   assert.ok(Math.abs(pos.y - 300) < 1e-6);
@@ -113,7 +135,7 @@ test('PDR walks east along the corridor and stays snapped', () => {
 
 test('PDR respects northOffsetDeg', () => {
   const rotated = indexBuilding({ ...building, northOffsetDeg: 90 }); // plan "up" is east
-  const pos: Position = { floor: 'f1', x: 300, y: 300, source: 'qr', timestamp: 0 };
+  const pos: Position = { floor: 'f1', x: 300, y: 300, source: 'manual', timestamp: 0 };
   const p = advanceStep(rotated, pos, 90, 0.7, 1); // walking true east == plan up (blocked on corridor)
   assert.ok(Math.abs(p.x - 300) < 1e-6 || Math.abs(p.y - 300) < 1e-6);
   const q = advanceStep(rotated, pos, 180, 0.7, 1); // true south == plan right (east in plan)
@@ -146,10 +168,10 @@ test('heading filter handles 359 -> 1 wraparound', () => {
   assert.ok(v > 355 || v < 5, `v=${v}`);
 });
 
-test('parseAnchor', () => {
-  assert.deepEqual(parseAnchor('cnav:f1_j2'), { at: 'f1_j2' });
-  assert.deepEqual(parseAnchor('https://x.app/?at=f1_j2&to=f2_r_c'), { at: 'f1_j2', to: 'f2_r_c' });
-  assert.deepEqual(parseAnchor('f1_j2'), { at: 'f1_j2' });
-  assert.equal(parseAnchor('https://example.com/'), null);
-  assert.equal(parseAnchor(''), null);
+test('parseDeepLink', () => {
+  assert.deepEqual(parseDeepLink('https://x.app/?at=f1_j2&to=f2_r_c'), { at: 'f1_j2', to: 'f2_r_c' });
+  assert.deepEqual(parseDeepLink('http://localhost:5173/?to=f2_r_c'), { at: undefined, to: 'f2_r_c' });
+  assert.equal(parseDeepLink('https://example.com/'), null);
+  assert.equal(parseDeepLink('f1_j2'), null);
+  assert.equal(parseDeepLink(''), null);
 });

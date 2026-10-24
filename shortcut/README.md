@@ -1,16 +1,15 @@
 # Shortcut
 
 Indoor navigation for one campus building. An iOS app (React + Vite + TypeScript, wrapped with
-Capacitor) that routes people to rooms, positioned by **ESP32 BLE beacons**, **QR codes**,
+Capacitor) that routes people to rooms, positioned by **ESP32 BLE beacons**, manual "I'm here" taps,
 and **step counting** between them.
 
 ```
 src/data/building.json   map data (floors, nodes, edges, beacons)  <- edit this for the real building
 src/lib/                 routing (Dijkstra), directions, beacon smoothing, dead-reckoning math (pure, tested)
 src/positioning/         engine (single source of truth) + BLE + motion-sensor adapters
-src/components/          MapView (Leaflet, no tiles), QrScanner
+src/components/          MapView (Leaflet, no tiles)
 firmware/esp32_beacon/   PlatformIO C++ firmware for the beacons (ESP32, ESP32-S3, ESP32-WROVER-E)
-tools/make-qr.mjs        printable QR sheet, one code per node
 tests/                   logic tests (run with plain Node, no install needed)
 ```
 
@@ -26,7 +25,8 @@ npm run dev             # dev server: open in the Mac browser / phone Safari (no
 ```
 
 In the browser you can already: pick a destination, tap a node -> "I'm here", get routes,
-turn on Debug -> "Tap map to teleport". BLE and the in-app QR scanner need the iOS app.
+turn on Debug -> "Tap map to teleport". BLE needs the iOS app.
+To pre-stage a demo scene, open the app with `?at=<nodeId>&to=<nodeId>` (start position + destination).
 
 ## 2. Build the iOS app
 
@@ -37,12 +37,11 @@ npm run cap:sync        # build + copy web assets into the iOS project
 npm run cap:open        # opens Xcode
 ```
 
-In `ios/App/App/Info.plist` add these keys (without them iOS blocks Bluetooth/camera/motion):
+In `ios/App/App/Info.plist` add these keys (without them iOS blocks Bluetooth/motion):
 
 | Key | Value |
 |---|---|
 | `NSBluetoothAlwaysUsageDescription` | `Shortcut uses Bluetooth to find the nearest beacon and show where you are.` |
-| `NSCameraUsageDescription` | `Shortcut scans QR codes to set your location.` |
 | `NSMotionUsageDescription` | `Shortcut uses motion sensors to track your steps indoors.` |
 
 In Xcode: select the **App** target -> *Signing & Capabilities* -> choose your Apple ID team and
@@ -113,12 +112,14 @@ UUIDs are in `src/config.ts` and `firmware/esp32_beacon/src/protocol.h`.
 
 ### Placing only 3 beacons
 Beacons give *room-level* fixes (nearest beacon wins), not exact coordinates. With 3 boards:
-- Put them where a wrong guess costs the most and where QR codes are awkward, e.g. main lobby,
+- Put them where a wrong guess costs the most, e.g. main lobby,
   the stairwell/elevator landing, and the busiest hallway junction.
 - Keep them >= 8-10 m apart, same height (~2 m, on a wall, not inside a metal box), same orientation.
-- Everything else is covered by step counting + QR codes.
+- Everything else is covered by step counting + manual "I'm here" taps.
 - Use **Debug** in the app to watch live RSSI per beacon (about -50 dBm = very close, -90 = barely audible).
   If it flips between beacons, raise `hysteresisDb` or lower `alpha` in `src/lib/beacon-math.ts`.
+  A beacon only moves the dot once it's louder than `minRssi` (default -78 dBm, roughly 5 m). Stand where you
+  want the snap to happen, read the RSSI in Debug, and set `minRssi` a few dB below it.
 
 ## 4. Map the real building (do this early!)
 Edit `src/data/building.json`:
@@ -126,19 +127,16 @@ Edit `src/data/building.json`:
 - `nodes[]`: every door, intersection, stairs/elevator landing. `x,y` in plan units (y grows downward). Nodes with a `name` appear in the destination list.
 - `edges[]`: walkable connections. Stairs/elevators connect nodes on different floors (`"type": "stairs" | "elevator"`).
 - `metersPerUnit`: real meters per plan unit. Measure one corridor and divide.
-- `northOffsetDeg`: degrees clockwise from true north to the plan's "up". A wrong value makes the dot walk the wrong way.
+- `northOffsetDeg`: compass heading of the plan's "up" direction. A wrong value makes the dot walk the wrong way.
+  The iPhone compass reports *magnetic* north (about 14° off true north in Lowell), so measure it in the
+  building: turn on Steps + Debug, stand in a corridor that runs straight up the plan, point the top of the
+  phone down the corridor, and use the Heading shown in Debug.
 
-`npm run test:logic` validates that every edge and beacon references real nodes.
-
-## 5. QR codes
-```bash
-npm run qr                              # payload "cnav:<nodeId>" -> scanned inside the app
-npm run qr -- --url https://your.host   # payload is a URL -> also works with the iPhone Camera / Safari
-```
-Open `qr-codes/index.html`, print, tape each code at its location.
+`npm run test:logic` validates that every edge and beacon references real nodes, that every node is on its
+plan and connected, and that every destination is reachable.
 
 ## How positioning works
-`PositionEngine` holds the position. QR scan / BLE beacon / manual tap = **anchor** (exact node).
+`PositionEngine` holds the position. BLE beacon / manual tap = **anchor** (exact node).
 Steps (accelerometer peaks + compass heading) move the dot between anchors, snapped to the nearest corridor.
 Foreground only: iOS pauses sensors when the app is backgrounded.
 

@@ -36,8 +36,3 @@ button.ghost { background: transparent; }
 .sheet { width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); display: grid; gap: 10px; }
 .sheet h3 { margin: 0 0 4px; }
 .sheet button { font-size: 16px; padding: 12px; }
-
-.scanner { position: fixed; inset: 0; z-index: 1000; background: #000; }
-.scanner video { width: 100%; height: 100%; object-fit: cover; }
-.scanner-frame { position: absolute; left: 50%; top: 45%; width: 240px; height: 240px; transform: translate(-50%, -50%); border: 3px solid #fff; border-radius: 18px; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); }
-.scanner-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #fff; background: rgba(0,0,0,.6); }

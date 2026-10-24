@@ -26,8 +26,6 @@
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Shortcut uses Bluetooth to find the nearest beacon and show where you are.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Shortcut scans QR codes to set your location.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Shortcut uses motion sensors to track your steps indoors.</string>
 	<key>UIApplicationSceneManifest</key>

@@ -172,24 +172,10 @@
       "kind": "junction"
     },
     {
-      "id": "f1_junction_20",
-      "floor": "f1",
-      "x": -179,
-      "y": -229,
-      "kind": "junction"
-    },
-    {
       "id": "f1_junction_23",
       "floor": "f1",
       "x": 202,
       "y": 320,
-      "kind": "junction"
-    },
-    {
-      "id": "f1_junction_24",
-      "floor": "f1",
-      "x": 12,
-      "y": 14,
       "kind": "junction"
     }
   ],

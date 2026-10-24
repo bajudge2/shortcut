@@ -9,14 +9,12 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test:logic": "node --experimental-transform-types --test tests/*.test.ts",
-    "qr": "node tools/make-qr.mjs",
     "cap:sync": "npm run build && npx cap sync ios",
     "cap:open": "npx cap open ios"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.0.0",
     "@capacitor/core": "^8.0.0",
-    "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -28,7 +26,6 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
-    "qrcode": "^1.5.4",
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
   }
