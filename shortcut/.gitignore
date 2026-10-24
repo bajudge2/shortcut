@@ -1,0 +1,8 @@
+node_modules
+dist
+qr-codes
+.DS_Store
+ios/App/Pods
+ios/App/build
+ios/DerivedData
+*.log
