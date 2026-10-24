@@ -330,8 +330,8 @@
     }
   ],
   "beacons": [
-    { "id": "B1", "node": "f1_junction" },
-    { "id": "B2", "node": "f1_junction_17" },
+    { "id": "B1", "node": "f1_junction_6" },
+    { "id": "B2", "node": "f1_junction_4" },
     { "id": "B3", "node": "f1_junction_5" }
   ]
 }
