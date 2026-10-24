@@ -85,6 +85,10 @@ export default function MapView({ building, floorId, position, routeNodes, desti
       youMarker.current = null;
       map.remove();
       mapRef.current = null;
+      // A remounted map (React StrictMode in dev) starts with no view, so it must be
+      // treated as a first render again; otherwise the plan is never fitted and stays blank.
+      viewPrev.current = null;
+      prevPos.current = null;
     };
   }, []);
 

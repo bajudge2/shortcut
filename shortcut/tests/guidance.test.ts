@@ -86,11 +86,12 @@ test('nearestLandmark: floor with no nodes returns null', () => {
 });
 
 // Validates: Requirements 5.1
-test('nearestLandmark on real building.json: near f1_junction_4 -> Crossroads Cafe', () => {
-  const j = realBuilding.nodes.find((n) => n.id === 'f1_junction_4')!;
-  assert.ok(j, 'f1_junction_4 exists');
+test('nearestLandmark on real building.json: at the crossroads -> A-255', () => {
+  const j = realBuilding.nodes.find((n) => n.id === 'f2_crossroads')!;
+  assert.ok(j, 'f2_crossroads exists');
+  // the crossroads junction is unnamed, so the nearest named node (A-255, 46 units away) is used
   const lm = nearestLandmark(realBuilding, j.floor, j.x, j.y)!;
-  assert.equal(lm.label, 'Crossroads Cafe');
+  assert.equal(lm.label, 'A-255');
 });
 
 // Validates: Requirements 5.3
@@ -102,10 +103,10 @@ test('sourceLabel for all four sources', () => {
 });
 
 // Validates: Requirements 7.4
-test('destinationGroups on real building.json: one "Floor 1" group, named nodes sorted A to Z', () => {
+test('destinationGroups on real building.json: one "Floor 2" group, named nodes sorted A to Z', () => {
   const groups = destinationGroups(realBuilding);
   assert.equal(groups.length, 1);
-  assert.equal(groups[0].floor.label, 'Floor 1');
+  assert.equal(groups[0].floor.label, 'Floor 2');
   const names = groups[0].nodes.map((n) => n.name!);
   const expected = realBuilding.nodes
     .filter((n) => n.floor === groups[0].floor.id && n.name && n.name.trim())
@@ -114,5 +115,5 @@ test('destinationGroups on real building.json: one "Floor 1" group, named nodes 
   for (let i = 1; i < names.length; i++) {
     assert.ok(names[i - 1].toLowerCase() <= names[i].toLowerCase(), `${names[i - 1]} before ${names[i]}`);
   }
-  assert.equal(names[0], 'Arena Entrance');
+  assert.equal(names[0], 'A-255');
 });

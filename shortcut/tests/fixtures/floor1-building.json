@@ -1,0 +1,337 @@
+{
+  "id": "umass_lowell_building_a",
+  "name": "UMass Lowell — Building A",
+  "metersPerUnit": 0.12192,
+  "northOffsetDeg": 333,
+  "floors": [
+    {
+      "id": "f1",
+      "label": "Floor 1",
+      "level": 1,
+      "width": 610,
+      "height": 888,
+      "image": "/plans/f1.png"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "f1_junction",
+      "floor": "f1",
+      "x": 387,
+      "y": 230,
+      "kind": "entrance",
+      "name": "Meehan Student Center Entrance A"
+    },
+    {
+      "id": "f1_junction_2",
+      "floor": "f1",
+      "x": 371,
+      "y": 275,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_3",
+      "floor": "f1",
+      "x": 306,
+      "y": 262,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_4",
+      "floor": "f1",
+      "x": 233,
+      "y": 241,
+      "kind": "entrance",
+      "name": "Crossroads Cafe"
+    },
+    {
+      "id": "f1_junction_5",
+      "floor": "f1",
+      "x": 105,
+      "y": 339,
+      "kind": "entrance",
+      "name": "Meehan Student Center Entrance B"
+    },
+    {
+      "id": "f1_junction_6",
+      "floor": "f1",
+      "x": 157,
+      "y": 264,
+      "kind": "elevator",
+      "name": "Elevator A"
+    },
+    {
+      "id": "f1_junction_7",
+      "floor": "f1",
+      "x": 295,
+      "y": 332,
+      "kind": "stairs",
+      "name": "Stairwell A"
+    },
+    {
+      "id": "f1_junction_8",
+      "floor": "f1",
+      "x": 212,
+      "y": 351,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_9",
+      "floor": "f1",
+      "x": 298,
+      "y": 357,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_10",
+      "floor": "f1",
+      "x": 256,
+      "y": 286,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_11",
+      "floor": "f1",
+      "x": 188,
+      "y": 286,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_12",
+      "floor": "f1",
+      "x": 362,
+      "y": 338,
+      "kind": "entrance",
+      "name": "Arena Entrance"
+    },
+    {
+      "id": "f1_junction_13",
+      "floor": "f1",
+      "x": 358,
+      "y": 434,
+      "kind": "elevator",
+      "name": "Elevator Arena"
+    },
+    {
+      "id": "f1_junction_14",
+      "floor": "f1",
+      "x": 327,
+      "y": 338,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_15",
+      "floor": "f1",
+      "x": 325,
+      "y": 394,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_16",
+      "floor": "f1",
+      "x": 92,
+      "y": 254,
+      "kind": "restroom",
+      "name": "Restrooms"
+    },
+    {
+      "id": "f1_junction_17",
+      "floor": "f1",
+      "x": 226,
+      "y": 314,
+      "kind": "other",
+      "name": "Info Desk"
+    },
+    {
+      "id": "f1_junction_18",
+      "floor": "f1",
+      "x": 209,
+      "y": 375,
+      "kind": "entrance",
+      "name": "Solution Center"
+    },
+    {
+      "id": "f1_junction_19",
+      "floor": "f1",
+      "x": 119,
+      "y": 283,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_21",
+      "floor": "f1",
+      "x": 251,
+      "y": 329,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_22",
+      "floor": "f1",
+      "x": 245,
+      "y": 351,
+      "kind": "junction"
+    },
+    {
+      "id": "f1_junction_23",
+      "floor": "f1",
+      "x": 202,
+      "y": 320,
+      "kind": "junction"
+    }
+  ],
+  "edges": [
+    {
+      "from": "f1_junction",
+      "to": "f1_junction_2"
+    },
+    {
+      "from": "f1_junction_2",
+      "to": "f1_junction_3"
+    },
+    {
+      "from": "f1_junction_3",
+      "to": "f1_junction_4"
+    },
+    {
+      "from": "f1_junction_3",
+      "to": "f1_junction_10"
+    },
+    {
+      "from": "f1_junction_2",
+      "to": "f1_junction_10"
+    },
+    {
+      "from": "f1_junction_10",
+      "to": "f1_junction_11"
+    },
+    {
+      "from": "f1_junction_11",
+      "to": "f1_junction_6"
+    },
+    {
+      "from": "f1_junction_11",
+      "to": "f1_junction_19"
+    },
+    {
+      "from": "f1_junction_19",
+      "to": "f1_junction_16"
+    },
+    {
+      "from": "f1_junction_10",
+      "to": "f1_junction_17"
+    },
+    {
+      "from": "f1_junction_2",
+      "to": "f1_junction_17"
+    },
+    {
+      "from": "f1_junction_2",
+      "to": "f1_junction_14"
+    },
+    {
+      "from": "f1_junction_14",
+      "to": "f1_junction_7"
+    },
+    {
+      "from": "f1_junction_2",
+      "to": "f1_junction_7"
+    },
+    {
+      "from": "f1_junction_12",
+      "to": "f1_junction_14"
+    },
+    {
+      "from": "f1_junction_12",
+      "to": "f1_junction_2"
+    },
+    {
+      "from": "f1_junction_12",
+      "to": "f1_junction_15"
+    },
+    {
+      "from": "f1_junction_14",
+      "to": "f1_junction_15"
+    },
+    {
+      "from": "f1_junction_9",
+      "to": "f1_junction_15"
+    },
+    {
+      "from": "f1_junction_9",
+      "to": "f1_junction_7"
+    },
+    {
+      "from": "f1_junction_9",
+      "to": "f1_junction_8"
+    },
+    {
+      "from": "f1_junction_8",
+      "to": "f1_junction_17"
+    },
+    {
+      "from": "f1_junction_8",
+      "to": "f1_junction_5"
+    },
+    {
+      "from": "f1_junction_8",
+      "to": "f1_junction_18"
+    },
+    {
+      "from": "f1_junction_15",
+      "to": "f1_junction_13"
+    },
+    {
+      "from": "f1_junction_22",
+      "to": "f1_junction_8"
+    },
+    {
+      "from": "f1_junction_21",
+      "to": "f1_junction_22"
+    },
+    {
+      "from": "f1_junction_21",
+      "to": "f1_junction_10"
+    },
+    {
+      "from": "f1_junction_11",
+      "to": "f1_junction_17"
+    },
+    {
+      "from": "f1_junction_3",
+      "to": "f1_junction_7"
+    },
+    {
+      "from": "f1_junction_14",
+      "to": "f1_junction_3"
+    },
+    {
+      "from": "f1_junction_8",
+      "to": "f1_junction_23"
+    },
+    {
+      "from": "f1_junction_11",
+      "to": "f1_junction_23"
+    },
+    {
+      "from": "f1_junction_19",
+      "to": "f1_junction_6"
+    },
+    {
+      "from": "f1_junction_10",
+      "to": "f1_junction_7"
+    },
+    {
+      "from": "f1_junction_5",
+      "to": "f1_junction_23"
+    },
+    {
+      "from": "f1_junction_10",
+      "to": "f1_junction_4"
+    }
+  ],
+  "beacons": [
+    { "id": "B1", "node": "f1_junction_6" },
+    { "id": "B2", "node": "f1_junction_4" },
+    { "id": "B3", "node": "f1_junction_5" }
+  ]
+}

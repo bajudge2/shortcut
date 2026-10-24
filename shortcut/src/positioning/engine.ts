@@ -207,6 +207,8 @@ export class PositionEngine {
       const p = JSON.parse(raw) as Position;
       if (Date.now() - p.timestamp > MAX_RESTORE_AGE_MS) return;
       if (p.nodeId && !this.idx.nodeById.has(p.nodeId)) return;
+      // a position saved on a floor the map no longer has (e.g. after a map swap) would blank the map
+      if (!this.building.floors.some((f) => f.id === p.floor)) return;
       this.pos = p;
     } catch { /* ignore corrupt/unavailable storage */ }
   }

@@ -6,7 +6,8 @@ import { focusLayers, routeKey } from '../src/lib/focus-layers.ts';
 import { destinationGroups, destinationName, locationPickerValue } from '../src/lib/guidance.ts';
 import type { Building, Position } from '../src/lib/types.ts';
 
-const real = JSON.parse(readFileSync(new URL('../src/data/building.json', import.meta.url), 'utf8')) as Building;
+// Frozen copy of the floor-1 map these tests were written against (the app now uses a floor-2 map).
+const real = JSON.parse(readFileSync(new URL('./fixtures/floor1-building.json', import.meta.url), 'utf8')) as Building;
 const realIdx = indexBuilding(real);
 const at = (id: string): Position => {
   const n = realIdx.nodeById.get(id)!;

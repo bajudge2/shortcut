@@ -6,7 +6,8 @@ import { FOLLOW_MAX_EXTENT_M, FOLLOW_MIN_EXTENT_M, followView } from '../src/lib
 import { INITIAL_FOLLOW_MODE, showRecenter, stepFollow, viewCommand, type FollowEvent, type FollowMode } from '../src/lib/follow-state.ts';
 import type { Building, Position } from '../src/lib/types.ts';
 
-const real = JSON.parse(readFileSync(new URL('../src/data/building.json', import.meta.url), 'utf8')) as Building;
+// Frozen copy of the floor-1 map these tests were written against (the app now uses a floor-2 map).
+const real = JSON.parse(readFileSync(new URL('./fixtures/floor1-building.json', import.meta.url), 'utf8')) as Building;
 const realIdx = indexBuilding(real);
 const pos = (x: number, y: number, floor = 'f1'): Position => ({ floor, x, y, source: 'pdr', timestamp: 0 });
 const route = findRoute(realIdx, 'f1_junction_12', 'f1_junction_4')!.nodes;

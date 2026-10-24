@@ -15,6 +15,7 @@ import { GyroCompassFusion, WrongWayDetector, headingDelta } from '../src/lib/fu
 import { parseDeepLink } from '../src/lib/deeplink.ts';
 
 import { PositionEngine } from '../src/positioning/engine.ts';
+import { STEP_LENGTH_M } from '../src/config.ts';
 import type { Building, Position } from '../src/lib/types.ts';
 
 // Real map: only checked for consistency, so editing it never breaks the logic tests below.
@@ -44,6 +45,57 @@ test('real map: every node is on its plan and connected, every destination reach
   for (const a of dests) for (const b of dests) {
     if (a.id !== b.id) assert.ok(findRoute(realIdx, a.id, b.id, {}), `no route ${a.id} -> ${b.id}`);
   }
+});
+
+test('real map demo route: Club Hub -> Student Engagement turns left at the crossroads, A-255 turns right', () => {
+  const realIdx = indexBuilding(realBuilding);
+  const toEngagement = findRoute(realIdx, 'f2_club_hub', 'f2_student_engagement')!;
+  assert.deepEqual(toEngagement.nodes, ['f2_club_hub', 'f2_restrooms', 'f2_crossroads', 'f2_student_engagement']);
+  const left = describeRoute(realIdx, toEngagement).map((s) => s.text);
+  assert.deepEqual(left, ['Start at Club Hub (A-240)', 'Turn left at the intersection', 'Arrive at Student Engagement (A-220)'], left.join(' | '));
+  const right = describeRoute(realIdx, findRoute(realIdx, 'f2_club_hub', 'f2_a255')!).map((s) => s.text);
+  assert.deepEqual(right, ['Start at Club Hub (A-240)', 'Turn right at the intersection', 'Arrive at A-255'], right.join(' | '));
+});
+
+test('real map tech demo walk: B1 Club Hub -> B2 A-255 -> B3 Student Engagement', () => {
+  // Compass heading for a plan direction on this map: plan "up" points to northOffsetDeg.
+  const compass = (planDeg: number) => (planDeg + realBuilding.northOffsetDeg) % 360;
+  const DOWN = compass(180), WEST = compass(270), EAST = compass(90);
+  const ids = Object.fromEntries(realBuilding.beacons.map((b) => [b.id, b.node]));
+  assert.deepEqual(ids, { B1: 'f2_club_hub', B2: 'f2_a255', B3: 'f2_student_engagement' });
+
+  const engine = new PositionEngine(realBuilding, STEP_LENGTH_M);
+  engine.clear();
+  const realIdx = engine.idx;
+  let t = 0;
+  const walk = (headingDeg: number, steps: number) => {
+    for (let i = 0; i < steps; i++) engine.onStep({ headingDeg, accelerationPeak: 2, timestamp: (t += 500) });
+  };
+  const stepsFor = (units: number) => Math.round((units * realBuilding.metersPerUnit) / STEP_LENGTH_M);
+
+  // 1. Standing at Club Hub: B1 gives the first fix.
+  engine.onBeacon({ id: 'B1', rssi: -60 });
+  assert.equal(engine.position!.nodeId, 'f2_club_hub');
+
+  // 2. Walk down the hallway toward A-255. A stray loud B3 must not pull the dot away.
+  engine.setRoute(findRoute(realIdx, 'f2_club_hub', 'f2_a255')!.nodes);
+  walk(DOWN, stepsFor(432 - 272));
+  assert.ok(Math.abs(engine.position!.y - 432) < 6, `at the crossroads, y=${engine.position!.y}`);
+  const atCrossroads = engine.position!;
+  engine.onBeacon({ id: 'B3', rssi: -74 });
+  assert.deepEqual(engine.position, atCrossroads, 'far beacon ignored');
+
+  // 3. Turn right (west) to A-255: B2 is accepted as soon as it is heard.
+  walk(WEST, stepsFor(258 - 212) - 1);
+  engine.onBeacon({ id: 'B2', rssi: -65 });
+  assert.equal(engine.position!.nodeId, 'f2_a255');
+  assert.equal(engine.pendingBeacon, null);
+
+  // 4. Turn around and walk east past the crossroads to Student Engagement: B3 accepted.
+  engine.setRoute(findRoute(realIdx, 'f2_a255', 'f2_student_engagement')!.nodes);
+  walk(EAST, stepsFor(430 - 212) - 2);
+  engine.onBeacon({ id: 'B3', rssi: -65 });
+  assert.equal(engine.position!.nodeId, 'f2_student_engagement');
 });
 
 test('same-floor route and distance', () => {

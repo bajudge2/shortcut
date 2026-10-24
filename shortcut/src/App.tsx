@@ -28,7 +28,11 @@ const isNative = Capacitor.isNativePlatform();
 export default function App() {
   const [pos, setPos] = useState<Position | null>(engine.position);
   const [navigation, setNavigation] = useState<NavigationState>(engine.navigation);
-  const [dest, setDest] = useState<string>(() => localStorage.getItem(DEST_KEY) ?? '');
+  // ignore a saved destination that is no longer on the map (e.g. after a map swap)
+  const [dest, setDest] = useState<string>(() => {
+    const saved = localStorage.getItem(DEST_KEY) ?? '';
+    return building.nodes.some((n) => n.id === saved) ? saved : '';
+  });
   const [accessible, setAccessible] = useState(false);
   const [viewFloor, setViewFloor] = useState<string>(engine.position?.floor ?? building.floors[0].id);
   const [bleOn, setBleOn] = useState(false);
