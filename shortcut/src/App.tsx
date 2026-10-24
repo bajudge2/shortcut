@@ -3,13 +3,12 @@ import { Capacitor } from '@capacitor/core';
 import buildingJson from './data/building.json';
 import { BEACON_NAME_PREFIX, BEACON_SERVICE_UUID, STEP_LENGTH_M } from './config.ts';
 import { describeRoute, destinations, findRoute, nearestNode, nodeLabel } from './lib/graph.ts';
-import { parseAnchor } from './lib/anchor.ts';
+import { parseDeepLink } from './lib/deeplink.ts';
 import type { Building, Position } from './lib/types.ts';
 import { PositionEngine } from './positioning/engine.ts';
 import { BleLocator, type BeaconSnapshot } from './positioning/ble.ts';
 import { MotionSensors } from './positioning/motion.ts';
 import MapView from './components/MapView.tsx';
-import QrScanner from './components/QrScanner.tsx';
 
 const building = buildingJson as unknown as Building;
 const engine = new PositionEngine(building, STEP_LENGTH_M);
@@ -23,7 +22,6 @@ export default function App() {
   const [dest, setDest] = useState<string>(() => localStorage.getItem(DEST_KEY) ?? '');
   const [accessible, setAccessible] = useState(false);
   const [viewFloor, setViewFloor] = useState<string>(engine.position?.floor ?? building.floors[0].id);
-  const [scanning, setScanning] = useState(false);
   const [sheetNode, setSheetNode] = useState<string | null>(null);
   const [bleOn, setBleOn] = useState(false);
   const [stepsOn, setStepsOn] = useState(false);
@@ -45,9 +43,9 @@ export default function App() {
 
   // deep links: ?at=<node>&to=<node>
   useEffect(() => {
-    const a = parseAnchor(window.location.href);
+    const a = parseDeepLink(window.location.href);
     if (!a) return;
-    if (a.at && !engine.setAnchor(a.at, 'qr')) flash(`Unknown location "${a.at}"`);
+    if (a.at && !engine.setAnchor(a.at, 'manual')) flash(`Unknown location "${a.at}"`);
     if (a.to && building.nodes.some((n) => n.id === a.to)) setDest(a.to);
     window.history.replaceState({}, '', window.location.pathname);
   }, []);
@@ -68,15 +66,6 @@ export default function App() {
   const noRoute = !!fromId && !!dest && !route;
   const destNode = dest ? engine.idx.nodeById.get(dest) : undefined;
   const dests = useMemo(() => destinations(building), []);
-
-  const onScan = (text: string) => {
-    setScanning(false);
-    const a = parseAnchor(text);
-    if (!a) return flash('Not a Shortcut code');
-    if (a.at && !engine.setAnchor(a.at, 'qr')) return flash(`Unknown location "${a.at}"`);
-    if (a.to) setDest(a.to);
-    flash('Location updated');
-  };
 
   const toggleBle = async () => {
     if (bleOn) { await ble.stop(); setBleOn(false); setBeacons([]); return; }
@@ -135,7 +124,7 @@ export default function App() {
       </div>
 
       <section className="panel">
-        {!pos && <p className="hint">Scan a QR code, or tap a place on the map and choose “I’m here”.</p>}
+        {!pos && <p className="hint">Turn on Bluetooth, or tap a place on the map and choose “I’m here”.</p>}
         {pos && !dest && <p className="hint">Choose a destination above.</p>}
         {arrived && <p className="arrived">🎉 You’ve arrived at {destNode ? nodeLabel(destNode) : 'your destination'}</p>}
         {noRoute && <p className="warn">No route found{accessible ? ' (try turning off accessible routing)' : ''}.</p>}
@@ -153,7 +142,6 @@ export default function App() {
         )}
 
         <div className="controls">
-          <button onClick={() => setScanning(true)}>📷 Scan QR</button>
           <button className={bleOn ? 'on' : ''} onClick={toggleBle}>📡 Bluetooth {bleOn ? 'on' : 'off'}</button>
           <button className={stepsOn ? 'on' : ''} onClick={toggleSteps}>👣 Steps {stepsOn ? 'on' : 'off'}</button>
           <label><input type="checkbox" checked={accessible} onChange={(e) => setAccessible(e.target.checked)} /> ♿ Accessible</label>
@@ -181,8 +169,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {scanning && <QrScanner onResult={onScan} onClose={() => setScanning(false)} />}
     </div>
   );
 }

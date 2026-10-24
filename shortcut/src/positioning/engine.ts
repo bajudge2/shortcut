@@ -8,7 +8,7 @@ const MAX_RESTORE_AGE_MS = 10 * 60 * 1000;
 /**
  * Single source of truth for "where is the user".
  *
- *  - Anchors (QR scan, BLE beacon, manual tap) set an exact node position.
+ *  - Anchors (BLE beacon, manual tap) set an exact node position.
  *  - Steps (dead reckoning) move the dot between anchors, snapped to corridors.
  *
  * Every positioning source just calls one of the methods below, so adding a

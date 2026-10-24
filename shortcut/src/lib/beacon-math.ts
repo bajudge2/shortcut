@@ -14,7 +14,10 @@ export interface BeaconTrackerOptions {
 export const DEFAULT_BEACON_OPTS: BeaconTrackerOptions = {
   alpha: 0.3,
   staleMs: 4000,
-  minRssi: -90,
+  // Only anchor to a beacon when it's close. With the firmware's defaults (+3 dBm TX,
+  // about -59 dBm at 1 m) indoors, -78 dBm is roughly 5 m; -90 would snap the dot to a
+  // beacon 20+ m away. Re-tune on a real walk (watch Debug RSSI next to each beacon).
+  minRssi: -78,
   hysteresisDb: 5,
 };
 

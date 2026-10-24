@@ -1,6 +1,6 @@
 export type NodeKind = 'junction' | 'room' | 'stairs' | 'elevator' | 'entrance' | 'restroom' | 'other';
 export type EdgeType = 'corridor' | 'stairs' | 'elevator';
-export type PositionSource = 'qr' | 'manual' | 'ble' | 'pdr' | 'sim';
+export type PositionSource = 'manual' | 'ble' | 'pdr' | 'sim';
 
 export interface Floor {
   id: string;
@@ -52,7 +52,7 @@ export interface Position {
   floor: string;
   x: number;
   y: number;
-  /** set when the position is exactly on a node (QR / BLE / manual) */
+  /** set when the position is exactly on a node (BLE / manual) */
   nodeId?: string;
   source: PositionSource;
   timestamp: number;
