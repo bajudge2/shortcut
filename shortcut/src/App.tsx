@@ -6,7 +6,7 @@ import { describeRoute, findRoute, nearestNode, nodeLabel } from './lib/graph.ts
 import { destinationGroups, destinationName } from './lib/guidance.ts';
 import { parseDeepLink } from './lib/deeplink.ts';
 import type { Building, Position } from './lib/types.ts';
-import { PositionEngine } from './positioning/engine.ts';
+import { PositionEngine, type NavigationState } from './positioning/engine.ts';
 import { BleLocator, type BeaconSnapshot } from './positioning/ble.ts';
 import { MotionSensors } from './positioning/motion.ts';
 import MapView from './components/MapView.tsx';
@@ -26,6 +26,7 @@ const isNative = Capacitor.isNativePlatform();
 
 export default function App() {
   const [pos, setPos] = useState<Position | null>(engine.position);
+  const [navigation, setNavigation] = useState<NavigationState>(engine.navigation);
   const [dest, setDest] = useState<string>(() => localStorage.getItem(DEST_KEY) ?? '');
   const [accessible, setAccessible] = useState(false);
   const [viewFloor, setViewFloor] = useState<string>(engine.position?.floor ?? building.floors[0].id);
@@ -49,6 +50,8 @@ export default function App() {
     lastFloor.current = p?.floor ?? null;
   }), []);
 
+  useEffect(() => engine.subscribeNavigation(setNavigation), []);
+
   // deep links: ?at=<node>&to=<node>
   useEffect(() => {
     const a = parseDeepLink(window.location.href);
@@ -71,6 +74,7 @@ export default function App() {
   );
   const steps = useMemo(() => (route ? describeRoute(engine.idx, route) : []), [route]);
   const arrival = useArrival({ startId: fromId, destId: dest, position: pos });
+  useEffect(() => engine.setRoute(route?.nodes ?? []), [route]);
   const destNode = dest ? engine.idx.nodeById.get(dest) : undefined;
   const groups = useMemo(() => destinationGroups(building), []);
 
@@ -87,7 +91,7 @@ export default function App() {
   const toggleSteps = async () => {
     if (stepsOn) { motion.stop(); setStepsOn(false); return; }
     try {
-      await motion.start((h) => { engine.onStep(h); setStepCount(motion.steps); });
+      await motion.start((observation) => { engine.onStep(observation); setStepCount(motion.steps); });
       setStepsOn(true);
     } catch (e) { flash(e instanceof Error ? e.message : String(e)); }
   };
@@ -136,6 +140,7 @@ export default function App() {
 
       <section className="panel">
         <PositionStatus building={building} position={pos} viewFloor={viewFloor} onShowFloor={setViewFloor} />
+        {navigation.wrongWay && <p className="wrong-way">↩ You may be going the wrong way. Turn around and follow the route.</p>}
         <RouteGuidance positionKnown={!!pos} destNode={destNode} route={route} steps={steps}
           accessible={accessible} arrival={arrival} onDone={() => setDest('')} />
 
@@ -149,7 +154,11 @@ export default function App() {
         {debug && (
           <div className="debug">
             <div>Position: {pos ? `${pos.floor} (${Math.round(pos.x)}, ${Math.round(pos.y)}) via ${pos.source}${pos.nodeId ? ` @ ${pos.nodeId}` : ''}` : 'unknown'}</div>
-            <div>Heading: {motion.currentHeading === null ? '—' : `${Math.round(motion.currentHeading)}°`} · steps: {stepCount}</div>
+            <div>Heading: {motion.currentHeading === null ? '—' : `${Math.round(motion.currentHeading)}° fused`} · steps: {stepCount}</div>
+            <div>Route heading error: {navigation.headingErrorDeg === null ? '—' : `${Math.round(navigation.headingErrorDeg)}°`}{navigation.wrongWay ? ' · WRONG WAY' : ''}</div>
+            {engine.pendingBeacon && (
+              <div>Ignoring {engine.pendingBeacon.id}: too far from step estimate ({engine.pendingBeacon.count}/{engine.pendingBeacon.needed})</div>
+            )}
             <div>Beacons heard: {beacons.length === 0 ? 'none' : beacons.map((b) => `${b.id} ${Math.round(b.rssi)} dBm`).join(' · ')}</div>
             <label><input type="checkbox" checked={teleport} onChange={(e) => setTeleport(e.target.checked)} /> Tap map to teleport</label>
             <button className="ghost" onClick={() => engine.clear()}>Clear position</button>

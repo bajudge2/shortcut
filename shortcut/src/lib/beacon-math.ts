@@ -9,6 +9,7 @@ export interface BeaconTrackerOptions {
   staleMs: number;      // drop a beacon not heard for this long
   minRssi: number;      // ignore anything weaker than this (dBm)
   hysteresisDb: number; // challenger must beat current by this much
+  switchConfirmations: number; // consecutive ~1 s decisions required before switching
 }
 
 export const DEFAULT_BEACON_OPTS: BeaconTrackerOptions = {
@@ -19,6 +20,7 @@ export const DEFAULT_BEACON_OPTS: BeaconTrackerOptions = {
   // beacon 20+ m away. Re-tune on a real walk (watch Debug RSSI next to each beacon).
   minRssi: -78,
   hysteresisDb: 5,
+  switchConfirmations: 2,
 };
 
 interface Reading { ema: number; lastSeen: number }
@@ -26,6 +28,9 @@ interface Reading { ema: number; lastSeen: number }
 export class BeaconTracker {
   private readings = new Map<string, Reading>();
   private currentId: string | null = null;
+  private challengerId: string | null = null;
+  private challengerCount = 0;
+  private challengerSeenAt = -1;
   constructor(private opts: BeaconTrackerOptions = DEFAULT_BEACON_OPTS) {}
 
   update(id: string, rssi: number, now: number): void {
@@ -47,17 +52,56 @@ export class BeaconTracker {
 
   best(now: number): { id: string; rssi: number } | null {
     const live = this.snapshot(now).filter((r) => r.rssi >= this.opts.minRssi);
-    if (live.length === 0) { this.currentId = null; return null; }
+    // Keep currentId through silence: a beacon that briefly drops out of range must not
+    // hand its place to whatever is heard next without the normal confirmation.
+    if (live.length === 0) { this.clearChallenger(); return null; }
     const top = live[0];
-    const cur = this.currentId ? live.find((r) => r.id === this.currentId) : undefined;
-    if (!cur || top.id === cur.id || top.rssi > cur.rssi + this.opts.hysteresisDb) {
-      this.currentId = top.id;
+    if (this.currentId === null) {
+      this.currentId = top.id; // very first fix (or after reset) is accepted immediately
+      this.clearChallenger();
       return { id: top.id, rssi: top.rssi };
     }
-    return { id: cur.id, rssi: cur.rssi };
+    const cur = live.find((r) => r.id === this.currentId);
+    if (cur && (top.id === cur.id || top.rssi <= cur.rssi + this.opts.hysteresisDb)) {
+      this.clearChallenger();
+      return { id: cur.id, rssi: cur.rssi };
+    }
+    // Here the challenger is either clearly stronger, or the current beacon is briefly
+    // out of range. Both cases need fresh, consecutive confirmations to switch.
+    const challengerSeenAt = now - top.ageMs;
+    if (this.challengerId !== top.id) {
+      this.challengerId = top.id;
+      this.challengerCount = 1;
+      this.challengerSeenAt = challengerSeenAt;
+    } else if (challengerSeenAt !== this.challengerSeenAt) {
+      // Only a fresh one-second RSSI batch counts as another confirmation.
+      this.challengerCount++;
+      this.challengerSeenAt = challengerSeenAt;
+    }
+    if (this.challengerCount >= this.opts.switchConfirmations) {
+      this.currentId = top.id;
+      this.clearChallenger();
+      return { id: top.id, rssi: top.rssi };
+    }
+    // Unconfirmed challenger: hold the current beacon if heard, otherwise report nothing.
+    return cur ? { id: cur.id, rssi: cur.rssi } : null;
   }
 
-  reset(): void { this.readings.clear(); this.currentId = null; }
+  reset(): void { this.readings.clear(); this.currentId = null; this.clearChallenger(); }
+
+  private clearChallenger(): void {
+    this.challengerId = null;
+    this.challengerCount = 0;
+    this.challengerSeenAt = -1;
+  }
+}
+
+/** Mean RSSI with one low/high outlier removed when a one-second batch has enough packets. */
+export function averageRssiBatch(values: number[]): number {
+  if (values.length === 0) return NaN;
+  const sorted = [...values].sort((a, b) => a - b);
+  const used = sorted.length >= 5 ? sorted.slice(1, -1) : sorted;
+  return used.reduce((sum, value) => sum + value, 0) / used.length;
 }
 
 /** Extracts the short beacon id from an advertised name like "CNAV-B1". */

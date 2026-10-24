@@ -1,24 +1,43 @@
-import { indexBuilding, nearestNode, snapToGraph, type BuildingIndex } from '../lib/graph.ts';
-import { advanceStep } from '../lib/pdr-math.ts';
-import type { Building, Position, PositionSource } from '../lib/types.ts';
+import { indexBuilding, nearestNode, routeHeadingAt, snapToGraph, type BuildingIndex } from '../lib/graph.ts';
+import { WrongWayDetector } from '../lib/fusion-math.ts';
+import { advanceStep, type StepObservation } from '../lib/pdr-math.ts';
+import type { BeaconFix, Building, Position, PositionSource } from '../lib/types.ts';
 
 const STORAGE_KEY = 'cnav:position';
 const MAX_RESTORE_AGE_MS = 10 * 60 * 1000;
+const SAME_BEACON_CORRECTION_MS = 8000;
+const CLOSE_BEACON_RSSI = -68;
+const MIN_CORRECTION_DISTANCE_M = 1.5;
+/** A beacon is usable from about this far away (minRssi -78 dBm ≈ 5 m) plus margin. */
+const BEACON_RANGE_M = 6;
+/** Dead-reckoning error grows with distance walked since the last exact fix. */
+const PDR_DRIFT_FRACTION = 0.3;
+/** Consecutive ~1 s reports needed to accept a beacon dead reckoning says is too far away. */
+const IMPLAUSIBLE_BEACON_CONFIRMATIONS = 6;
 
-/**
- * Single source of truth for "where is the user".
- *
- *  - Anchors (BLE beacon, manual tap) set an exact node position.
- *  - Steps (dead reckoning) move the dot between anchors, snapped to corridors.
- *
- * Every positioning source just calls one of the methods below, so adding a
- * new source (NFC, Wi-Fi, ...) never touches the UI.
- */
+export interface NavigationState {
+  wrongWay: boolean;
+  headingErrorDeg: number | null;
+}
+
+/** Single source of truth that fuses exact anchors, stable BLE fixes, and step PDR. */
 export class PositionEngine {
   readonly idx: BuildingIndex;
   private pos: Position | null = null;
   private listeners = new Set<(p: Position | null) => void>();
+  private navigationListeners = new Set<(state: NavigationState) => void>();
+  private navigationState: NavigationState = { wrongWay: false, headingErrorDeg: null };
+  private wrongWay = new WrongWayDetector();
+  private activeRoute: string[] = [];
+  private activeRouteKey = '';
   private lastBeaconId: string | null = null;
+  private lastBeaconFixAt = 0;
+  /** meters walked (by step count) since the last exact fix */
+  private walkedSinceFixM = 0;
+  /** false until this session has an exact fix; a restored position is not trusted for gating */
+  private hasSessionFix = false;
+  private pendingBeaconId: string | null = null;
+  private pendingBeaconCount = 0;
 
   constructor(private building: Building, private stepLengthM: number) {
     this.idx = indexBuilding(building);
@@ -26,10 +45,25 @@ export class PositionEngine {
   }
 
   get position(): Position | null { return this.pos; }
+  get navigation(): NavigationState { return this.navigationState; }
 
   subscribe(fn: (p: Position | null) => void): () => void {
     this.listeners.add(fn);
     return () => { this.listeners.delete(fn); };
+  }
+
+  subscribeNavigation(fn: (state: NavigationState) => void): () => void {
+    this.navigationListeners.add(fn);
+    return () => { this.navigationListeners.delete(fn); };
+  }
+
+  /** Supplies the currently displayed route so step headings can detect sustained wrong-way travel. */
+  setRoute(nodes: string[]): void {
+    const key = nodes.join('>');
+    if (key === this.activeRouteKey) return;
+    this.activeRoute = [...nodes];
+    this.activeRouteKey = key;
+    this.resetWrongWay();
   }
 
   /** Exact fix on a graph node. Returns false if the node id is unknown. */
@@ -37,6 +71,8 @@ export class PositionEngine {
     const n = this.idx.nodeById.get(nodeId);
     if (!n) return false;
     this.set({ floor: n.floor, x: n.x, y: n.y, nodeId: n.id, source, timestamp: Date.now() }, true);
+    this.markExactFix();
+    this.resetWrongWay();
     return true;
   }
 
@@ -45,32 +81,101 @@ export class PositionEngine {
     const s = snapToGraph(this.idx, floor, x, y);
     if (!isFinite(s.distance)) return;
     this.set({ floor, x: s.x, y: s.y, source: 'sim', timestamp: Date.now() }, true);
+    this.markExactFix();
+    this.resetWrongWay();
   }
 
-  /** Called ~1/s with the currently-nearest beacon id (or null if none in range). */
-  onBeacon(beaconId: string | null): void {
-    if (beaconId === null) { this.lastBeaconId = null; return; }
-    if (beaconId === this.lastBeaconId) return; // same beacon: let dead reckoning move the dot
-    const def = this.building.beacons.find((b) => b.id === beaconId);
-    if (!def) return; // unknown beacon: ignore (shows up in the debug panel)
-    this.lastBeaconId = beaconId;
-    this.setAnchor(def.node, 'ble');
+  /** Called once/s with the stable, averaged nearest beacon (or null). */
+  onBeacon(beacon: BeaconFix | null): void {
+    if (beacon === null) return; // keep identity so a brief dropout cannot bypass correction gates
+    const def = this.building.beacons.find((candidate) => candidate.id === beacon.id);
+    if (!def) return;
+
+    const now = Date.now();
+    const node = this.idx.nodeById.get(def.node);
+    if (!node) return;
+    const distanceM = this.pos && this.pos.floor === node.floor
+      ? Math.hypot(this.pos.x - node.x, this.pos.y - node.y) * this.building.metersPerUnit
+      : Infinity;
+    // No trusted estimate yet (first fix, or only a restored position): accept.
+    if (!this.pos || !this.hasSessionFix) { this.acceptBeacon(beacon.id, def.node, now); return; }
+
+    // Same beacon: only correct accumulated drift when very close and after a cooldown.
+    if (beacon.id === this.lastBeaconId) {
+      this.clearPendingBeacon();
+      const confidentReturn = beacon.rssi >= CLOSE_BEACON_RSSI
+        && distanceM >= MIN_CORRECTION_DISTANCE_M
+        && now - this.lastBeaconFixAt >= SAME_BEACON_CORRECTION_MS;
+      if (confidentReturn) this.acceptBeacon(beacon.id, def.node, now);
+      return;
+    }
+
+    // Different beacon: accept only if dead reckoning says we could plausibly be near it.
+    // Otherwise (e.g. the destination beacon dropped out and a far one got loudest) hold
+    // the step-based position, unless the far beacon persists long enough to prove we're lost.
+    const allowanceM = BEACON_RANGE_M + PDR_DRIFT_FRACTION * this.walkedSinceFixM;
+    if (distanceM <= allowanceM) { this.acceptBeacon(beacon.id, def.node, now); return; }
+    if (this.pendingBeaconId === beacon.id) this.pendingBeaconCount++;
+    else { this.pendingBeaconId = beacon.id; this.pendingBeaconCount = 1; }
+    if (this.pendingBeaconCount >= IMPLAUSIBLE_BEACON_CONFIRMATIONS) this.acceptBeacon(beacon.id, def.node, now);
   }
 
-  /** Called per detected step with a compass heading in degrees (0 = north). */
-  onStep(headingDeg: number): void {
+  /** Beacon fix that dead reckoning rejected and is still waiting on (for the debug panel). */
+  get pendingBeacon(): { id: string; count: number; needed: number } | null {
+    return this.pendingBeaconId
+      ? { id: this.pendingBeaconId, count: this.pendingBeaconCount, needed: IMPLAUSIBLE_BEACON_CONFIRMATIONS }
+      : null;
+  }
+
+  private acceptBeacon(id: string, nodeId: string, now: number): void {
+    this.lastBeaconId = id;
+    this.lastBeaconFixAt = now;
+    this.clearPendingBeacon();
+    this.setAnchor(nodeId, 'ble');
+  }
+
+  private clearPendingBeacon(): void {
+    this.pendingBeaconId = null;
+    this.pendingBeaconCount = 0;
+  }
+
+  private markExactFix(): void {
+    this.walkedSinceFixM = 0;
+    this.hasSessionFix = true;
+  }
+
+  /** Called per accelerometer-confirmed step with compass+gyro fused heading. */
+  onStep(observation: StepObservation): void {
     if (!this.pos) return;
-    this.set(advanceStep(this.idx, this.pos, headingDeg, this.stepLengthM, Date.now()), false);
+    const expected = routeHeadingAt(
+      this.idx,
+      this.activeRoute,
+      this.pos.floor,
+      this.pos.x,
+      this.pos.y,
+    );
+    const nextNavigation = this.wrongWay.push(observation.headingDeg, expected);
+    if (nextNavigation.wrongWay !== this.navigationState.wrongWay
+      || nextNavigation.headingErrorDeg !== this.navigationState.headingErrorDeg) {
+      this.navigationState = nextNavigation;
+      this.emitNavigation();
+    }
+    this.set(advanceStep(this.idx, this.pos, observation.headingDeg, this.stepLengthM, observation.timestamp), false);
+    this.walkedSinceFixM += this.stepLengthM;
   }
 
   clear(): void {
     this.pos = null;
     this.lastBeaconId = null;
+    this.lastBeaconFixAt = 0;
+    this.walkedSinceFixM = 0;
+    this.hasSessionFix = false;
+    this.clearPendingBeacon();
+    this.resetWrongWay();
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     this.emit();
   }
 
-  /** Name of the node closest to the current position (for "You are near ..."). */
   nearestNodeId(): string | null {
     if (!this.pos) return null;
     return this.pos.nodeId ?? nearestNode(this.idx, this.pos.floor, this.pos.x, this.pos.y)?.id ?? null;
@@ -84,7 +189,16 @@ export class PositionEngine {
     this.emit();
   }
 
-  private emit(): void { for (const l of this.listeners) l(this.pos); }
+  private resetWrongWay(): void {
+    this.wrongWay.reset();
+    if (this.navigationState.wrongWay || this.navigationState.headingErrorDeg !== null) {
+      this.navigationState = { wrongWay: false, headingErrorDeg: null };
+      this.emitNavigation();
+    }
+  }
+
+  private emit(): void { for (const listener of this.listeners) listener(this.pos); }
+  private emitNavigation(): void { for (const listener of this.navigationListeners) listener(this.navigationState); }
 
   private restore(): void {
     try {
@@ -94,6 +208,6 @@ export class PositionEngine {
       if (Date.now() - p.timestamp > MAX_RESTORE_AGE_MS) return;
       if (p.nodeId && !this.idx.nodeById.has(p.nodeId)) return;
       this.pos = p;
-    } catch { /* ignore corrupt storage */ }
+    } catch { /* ignore corrupt/unavailable storage */ }
   }
 }

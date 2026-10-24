@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SignalMonitor } from '../lib/signal-monitor.ts';
 import type { PositionEngine } from '../positioning/engine.ts';
+import type { BeaconFix } from '../lib/types.ts';
+
+/** RSSI used for simulated beacon taps: strong enough to count as standing next to the beacon. */
+const SIM_BEACON_RSSI = -55;
 
 /** Simulated "no beacon" cadence; matches BleLocator's 1 s report rate. */
 const SIM_TICK_MS = 1000;
@@ -17,7 +21,7 @@ export interface SignalMonitorApi {
   /** no-op while simDisabled */
   setSimOn(on: boolean): void;
   /** stable identity; real BLE path */
-  reportBeacon(id: string | null): void;
+  reportBeacon(beacon: BeaconFix | null): void;
   /** Debug beacon buttons */
   simulateBeacon(id: string): void;
   notifyManualAnchor(): void;
@@ -59,15 +63,15 @@ export function useSignalMonitor(opts: { engine: PositionEngine; realBleOn: bool
 
   // Same path for real and simulated reports (Req 4.10).
   const reportBeacon = useCallback(
-    (id: string | null) => {
-      (monitorRef.current as SignalMonitor).report(id, now());
-      engineRef.current.onBeacon(id);
+    (beacon: BeaconFix | null) => {
+      (monitorRef.current as SignalMonitor).report(beacon?.id ?? null, now());
+      engineRef.current.onBeacon(beacon);
       refresh();
     },
     [refresh],
   );
 
-  const simulateBeacon = useCallback((id: string) => reportBeacon(id), [reportBeacon]);
+  const simulateBeacon = useCallback((id: string) => reportBeacon({ id, rssi: SIM_BEACON_RSSI }), [reportBeacon]);
 
   const setSimOn = useCallback((on: boolean) => {
     if (realBleOnRef.current) return; // disabled while real BLE is on (Req 4.8)

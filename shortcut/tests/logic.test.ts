@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { indexBuilding, findRoute, describeRoute, snapToGraph, nearestNode, destinations } from '../src/lib/graph.ts';
-import { BeaconTracker, parseBeaconName } from '../src/lib/beacon-math.ts';
+import { indexBuilding, findRoute, describeRoute, snapToGraph, nearestNode, destinations, routeHeadingAt } from '../src/lib/graph.ts';
+import { BeaconTracker, averageRssiBatch, parseBeaconName } from '../src/lib/beacon-math.ts';
 import { advanceStep, StepDetector, HeadingFilter } from '../src/lib/pdr-math.ts';
+import { GyroCompassFusion, WrongWayDetector, headingDelta } from '../src/lib/fusion-math.ts';
 import { parseDeepLink } from '../src/lib/deeplink.ts';
+
+import { PositionEngine } from '../src/positioning/engine.ts';
 import type { Building, Position } from '../src/lib/types.ts';
 
 // Real map: only checked for consistency, so editing it never breaks the logic tests below.
@@ -97,11 +100,42 @@ test('beacon tracker: picks strongest, hysteresis prevents flapping, stale expir
   // B2 becomes only slightly stronger -> no switch
   for (let i = 0; i < 20; i++) { t.update('B1', -70, 5000 + i * 100); t.update('B2', -67, 5000 + i * 100); }
   assert.equal(t.best(7000)!.id, 'B1');
-  // B2 clearly stronger -> switch
+  // B1 fades out of range and B2 is clearly stronger: it still needs a second fresh
+  // one-second batch before taking over (no instant hand-off).
   for (let i = 0; i < 30; i++) { t.update('B1', -85, 7000 + i * 100); t.update('B2', -55, 7000 + i * 100); }
-  assert.equal(t.best(10000)!.id, 'B2');
+  assert.equal(t.best(10000), null);
+  t.update('B2', -55, 11000);
+  assert.equal(t.best(11000)!.id, 'B2');
   // nothing heard for a long time -> null
   assert.equal(t.best(60000), null);
+});
+
+test('beacon switch confirmation requires a fresh RSSI batch', () => {
+  const t = new BeaconTracker();
+  t.update('B1', -60, 0);
+  assert.equal(t.best(0)!.id, 'B1');
+  t.update('B2', -40, 1000);
+  assert.equal(t.best(1000)!.id, 'B1', 'first fresh challenger batch only starts confirmation');
+  assert.equal(t.best(2000)!.id, 'B1', 'an empty batch must not confirm stale RSSI');
+  t.update('B2', -40, 2000);
+  assert.equal(t.best(2000)!.id, 'B2', 'second fresh challenger batch confirms switch');
+});
+
+test('beacon tracker: current beacon briefly out of range does not hand over to the next one', () => {
+  const t = new BeaconTracker();
+  t.update('B2', -60, 0);
+  assert.equal(t.best(0)!.id, 'B2');
+  // B2 silent long enough to go stale; B3 heard once -> not confirmed, report nothing
+  t.update('B3', -70, 5000);
+  assert.equal(t.best(5000), null);
+  // B2 comes back -> stays B2
+  t.update('B2', -60, 6000);
+  assert.equal(t.best(6000)!.id, 'B2');
+  // if B2 is really gone and B3 persists, it still takes over after fresh confirmations
+  t.update('B3', -70, 11000);
+  assert.equal(t.best(11000), null);
+  t.update('B3', -70, 12000);
+  assert.equal(t.best(12000)!.id, 'B3');
 });
 
 test('beacon tracker ignores very weak signals', () => {
@@ -115,6 +149,12 @@ test('beacon tracker does not anchor to a distant beacon (~20 m away)', () => {
   for (let i = 0; i < 10; i++) t.update('B1', -88, i * 200);
   assert.equal(t.best(2000), null);
   assert.equal(t.snapshot(2000).length, 1, 'still shown in the debug panel');
+});
+
+test('one-second RSSI batch averages noise and drops extreme outliers', () => {
+  assert.equal(averageRssiBatch([-60, -61, -59]), -60);
+  assert.equal(averageRssiBatch([-100, -61, -60, -59, -20]), -60);
+  assert.ok(Number.isNaN(averageRssiBatch([])));
 });
 
 test('parseBeaconName', () => {
@@ -166,6 +206,98 @@ test('heading filter handles 359 -> 1 wraparound', () => {
   f.push(359);
   const v = f.push(1);
   assert.ok(v > 355 || v < 5, `v=${v}`);
+});
+
+test('gyro/compass fusion integrates turns and compass removes drift', () => {
+  const f = new GyroCompassFusion(0.5);
+  assert.equal(f.pushCompass(350), 350);
+  assert.equal(Math.round(f.pushGyro(20, 0.5)!), 350, 'rejects implausibly long gyro interval');
+  assert.equal(Math.round(f.pushGyro(20, 0.2)!), 354);
+  assert.equal(Math.round(f.pushCompass(2)!), 358, 'corrects across north without wrapping the long way');
+  assert.equal(Math.round(f.pushCompass(90, 90)!), 358, 'rejects inaccurate compass reading');
+  assert.equal(headingDelta(350, 10), 20);
+});
+
+test('wrong-way warning requires sustained opposite steps and clears after recovery', () => {
+  const d = new WrongWayDetector(3, 2, 105);
+  assert.equal(d.push(270, 90).wrongWay, false);
+  assert.equal(d.push(275, 90).wrongWay, false);
+  assert.equal(d.push(280, 90).wrongWay, true);
+  assert.equal(d.push(95, 90).wrongWay, true);
+  assert.equal(d.push(90, 90).wrongWay, false);
+});
+
+test('route heading converts the plan segment to a compass heading', () => {
+  assert.equal(Math.round(routeHeadingAt(idx, ['f1_j1', 'f1_j2'], 'f1', 350, 300)!), 90);
+  assert.equal(routeHeadingAt(idx, ['f1_j1', 'f1_j2'], 'f1', 350, 500, 3), null);
+});
+
+test('position engine combines accelerometer-confirmed steps with route-aware wrong-way state', () => {
+  const engine = new PositionEngine(building, 0.7);
+  assert.equal(engine.setAnchor('f1_j1', 'manual'), true);
+  engine.setRoute(['f1_j1', 'f1_j2']); // east (90°)
+  for (let i = 1; i <= 3; i++) {
+    engine.onStep({ headingDeg: 270, accelerationPeak: 2, timestamp: i * 500 });
+  }
+  assert.equal(engine.navigation.wrongWay, true);
+  assert.ok(engine.position!.x < 300, `x=${engine.position!.x}`);
+  engine.onStep({ headingDeg: 90, accelerationPeak: 2, timestamp: 2000 });
+  engine.onStep({ headingDeg: 90, accelerationPeak: 2, timestamp: 2500 });
+  assert.equal(engine.navigation.wrongWay, false);
+});
+
+test('brief beacon loss cannot bypass same-beacon correction gates', () => {
+  const engine = new PositionEngine(building, 0.7);
+  engine.onBeacon({ id: 'B1', rssi: -60 });
+  for (let i = 1; i <= 3; i++) {
+    engine.onStep({ headingDeg: 90, accelerationPeak: 2, timestamp: i * 500 });
+  }
+  const before = engine.position!;
+  assert.ok(before.x > 500);
+  engine.onBeacon(null);
+  engine.onBeacon({ id: 'B1', rssi: -75 });
+  assert.deepEqual(engine.position, before, 'weak reacquisition must not snap back to B1');
+});
+
+test('dead reckoning rejects a far beacon while walking B1 -> B2, but accepts the next one', () => {
+  // B1 at x=300, B2 at x=500 (20 m), B3 at x=900 (60 m), all on one corridor
+  const line: Building = {
+    ...building,
+    beacons: [
+      { id: 'B1', node: 'f1_j1' },
+      { id: 'B2', node: 'f1_j2' },
+      { id: 'B3', node: 'f1_east_exit' },
+    ],
+  };
+  const engine = new PositionEngine(line, 0.7);
+  engine.clear();
+  engine.onBeacon({ id: 'B1', rssi: -60 }); // first fix accepted
+  assert.equal(engine.position!.nodeId, 'f1_j1');
+  for (let i = 1; i <= 20; i++) engine.onStep({ headingDeg: 90, accelerationPeak: 2, timestamp: i * 500 });
+  const walked = engine.position!;
+  assert.ok(Math.abs(walked.x - 440) < 1e-6, `x=${walked.x}`); // 14 m east
+
+  // B2 drops out and far-away B3 is loudest for a few seconds -> keep the step estimate
+  for (let i = 0; i < 5; i++) engine.onBeacon({ id: 'B3', rssi: -74 });
+  assert.deepEqual(engine.position, walked);
+  assert.equal(engine.pendingBeacon!.id, 'B3');
+
+  // B2 is plausible (6 m ahead) -> accepted immediately and the pending B3 is dropped
+  engine.onBeacon({ id: 'B2', rssi: -72 });
+  assert.equal(engine.position!.nodeId, 'f1_j2');
+  assert.equal(engine.pendingBeacon, null);
+});
+
+test('a persistent implausible beacon is eventually accepted (recovery when truly lost)', () => {
+  const engine = new PositionEngine(building, 0.7);
+  engine.clear();
+  engine.onBeacon({ id: 'B1', rssi: -60 }); // f1_j2
+  for (let i = 1; i < 6; i++) {
+    engine.onBeacon({ id: 'B3', rssi: -70 }); // other floor -> implausible
+    assert.equal(engine.position!.nodeId, 'f1_j2', `report ${i}`);
+  }
+  engine.onBeacon({ id: 'B3', rssi: -70 });
+  assert.equal(engine.position!.nodeId, 'f2_j2');
 });
 
 test('parseDeepLink', () => {

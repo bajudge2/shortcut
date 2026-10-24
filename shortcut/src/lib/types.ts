@@ -35,6 +35,12 @@ export interface BeaconDef {
   node: string;
 }
 
+export interface BeaconFix {
+  id: string;
+  /** stable averaged RSSI in dBm */
+  rssi: number;
+}
+
 export interface Building {
   id: string;
   name: string;

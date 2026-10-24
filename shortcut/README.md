@@ -136,8 +136,22 @@ Edit `src/data/building.json`:
 plan and connected, and that every destination is reachable.
 
 ## How positioning works
-`PositionEngine` holds the position. BLE beacon / manual tap = **anchor** (exact node).
-Steps (accelerometer peaks + compass heading) move the dot between anchors, snapped to the nearest corridor.
+`PositionEngine` holds the position and fuses the inputs:
+- BLE packets are averaged in one-second batches (dropping extreme outliers), then EMA-smoothed. A new
+  nearest beacon must be at least 5 dB stronger for two consecutive decisions before it anchors the dot.
+  A very close current beacon may periodically correct accumulated walking drift. This is nearest-beacon
+  positioning, not trilateration.
+- Dead reckoning vets beacon jumps: a different beacon only moves the dot if it is within about
+  6 m + 30% of the distance walked since the last fix. A farther beacon (e.g. the next one is loudest while
+  the one you're walking to briefly drops out) is ignored unless it stays the winner for ~6 s.
+- The accelerometer detects actual steps. Gyroscope yaw smooths short-term turns while the compass slowly
+  corrects gyro drift. Each confirmed step advances the dot by `STEP_LENGTH_M`, snapped to a corridor.
+- While routing, three consecutive steps pointed more than 105° away from the expected corridor raise a
+  wrong-way warning; two aligned steps clear it. Hold the phone roughly flat in portrait with its top
+  pointing where you are walking.
+- Manual tap is always available as an exact fallback anchor.
+
+The blue marker visually interpolates between step positions; visual animation never feeds back into routing.
 Foreground only: iOS pauses sensors when the app is backgrounded.
 
 ## Known limitations

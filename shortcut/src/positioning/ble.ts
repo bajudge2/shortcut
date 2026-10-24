@@ -1,21 +1,25 @@
 import { BleClient, type ScanResult } from '@capacitor-community/bluetooth-le';
-import { BeaconTracker, parseBeaconName } from '../lib/beacon-math.ts';
+import { BeaconTracker, averageRssiBatch, parseBeaconName } from '../lib/beacon-math.ts';
+
+import type { BeaconFix } from '../lib/types.ts';
 
 export interface BeaconSnapshot { id: string; rssi: number; ageMs: number }
 
 export interface BleHandlers {
-  /** strongest stable beacon id, or null when nothing usable is in range (called ~1/s) */
-  onBeacon: (beaconId: string | null) => void;
-  /** live readings for the debug panel (called ~1/s) */
+  /** strongest stable beacon, or null when nothing usable is in range (called once/s) */
+  onBeacon: (beacon: BeaconFix | null) => void;
+  /** live one-second-averaged readings for the debug panel */
   onSnapshot?: (snapshot: BeaconSnapshot[]) => void;
 }
 
 /**
- * Scans for our ESP32 beacons (filtered by service UUID), smooths RSSI, and
- * reports which beacon is nearest. Needs a real iPhone: the iOS Simulator has no Bluetooth.
+ * Device-only BLE adapter. Raw duplicate advertisements are collected into one-second
+ * batches before entering the slower EMA/hysteresis tracker. This prevents a split-second
+ * multipath spike—or one beacon producing more packets—from immediately moving the dot.
  */
 export class BleLocator {
   private tracker = new BeaconTracker();
+  private pending = new Map<string, number[]>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
 
@@ -27,19 +31,31 @@ export class BleLocator {
     if (this.running) return;
     await BleClient.initialize();
     this.tracker.reset();
+    this.pending.clear();
     await BleClient.requestLEScan(
       { services: [this.serviceUuid], allowDuplicates: true },
       (result: ScanResult) => {
         const name = result.localName ?? result.device.name;
         const id = parseBeaconName(name, this.namePrefix);
-        if (id && typeof result.rssi === 'number') this.tracker.update(id, result.rssi, Date.now());
+        if (!id || typeof result.rssi !== 'number') return;
+        const batch = this.pending.get(id) ?? [];
+        // Cap memory if a platform reports advertisements unusually quickly.
+        if (batch.length < 100) batch.push(result.rssi);
+        this.pending.set(id, batch);
       },
     );
     this.running = true;
     this.timer = setInterval(() => {
       const now = Date.now();
-      handlers.onSnapshot?.(this.tracker.snapshot(now));
-      handlers.onBeacon(this.tracker.best(now)?.id ?? null);
+      for (const [id, samples] of this.pending) {
+        const average = averageRssiBatch(samples);
+        if (Number.isFinite(average)) this.tracker.update(id, average, now);
+      }
+      this.pending.clear();
+      const snapshot = this.tracker.snapshot(now);
+      handlers.onSnapshot?.(snapshot);
+      const best = this.tracker.best(now);
+      handlers.onBeacon(best ? { id: best.id, rssi: best.rssi } : null);
     }, 1000);
   }
 
@@ -50,6 +66,7 @@ export class BleLocator {
       try { await BleClient.stopLEScan(); } catch { /* ignore */ }
     }
     this.running = false;
+    this.pending.clear();
     this.tracker.reset();
   }
 }
