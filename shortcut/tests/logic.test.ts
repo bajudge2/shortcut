@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { indexBuilding, findRoute, describeRoute, snapToGraph, nearestNode, destinations } from '../src/lib/graph.ts';
-import { BeaconTracker, parseBeaconName } from '../src/lib/beacon-math.ts';
+import { indexBuilding, findRoute, describeRoute, snapToGraph, nearestNode, destinations, routeHeadingAt } from '../src/lib/graph.ts';
+import { BeaconTracker, averageRssiBatch, parseBeaconName } from '../src/lib/beacon-math.ts';
 import { advanceStep, StepDetector, HeadingFilter } from '../src/lib/pdr-math.ts';
+import { GyroCompassFusion, WrongWayDetector, headingDelta } from '../src/lib/fusion-math.ts';
 import { parseDeepLink } from '../src/lib/deeplink.ts';
+
+import { PositionEngine } from '../src/positioning/engine.ts';
 import type { Building, Position } from '../src/lib/types.ts';
 
 // Real map: only checked for consistency, so editing it never breaks the logic tests below.
@@ -97,11 +100,22 @@ test('beacon tracker: picks strongest, hysteresis prevents flapping, stale expir
   // B2 becomes only slightly stronger -> no switch
   for (let i = 0; i < 20; i++) { t.update('B1', -70, 5000 + i * 100); t.update('B2', -67, 5000 + i * 100); }
   assert.equal(t.best(7000)!.id, 'B1');
-  // B2 clearly stronger -> switch
+  // B2 remains clearly stronger on the next one-second decision -> confirmed switch.
   for (let i = 0; i < 30; i++) { t.update('B1', -85, 7000 + i * 100); t.update('B2', -55, 7000 + i * 100); }
   assert.equal(t.best(10000)!.id, 'B2');
   // nothing heard for a long time -> null
   assert.equal(t.best(60000), null);
+});
+
+test('beacon switch confirmation requires a fresh RSSI batch', () => {
+  const t = new BeaconTracker();
+  t.update('B1', -60, 0);
+  assert.equal(t.best(0)!.id, 'B1');
+  t.update('B2', -40, 1000);
+  assert.equal(t.best(1000)!.id, 'B1', 'first fresh challenger batch only starts confirmation');
+  assert.equal(t.best(2000)!.id, 'B1', 'an empty batch must not confirm stale RSSI');
+  t.update('B2', -40, 2000);
+  assert.equal(t.best(2000)!.id, 'B2', 'second fresh challenger batch confirms switch');
 });
 
 test('beacon tracker ignores very weak signals', () => {
@@ -115,6 +129,12 @@ test('beacon tracker does not anchor to a distant beacon (~20 m away)', () => {
   for (let i = 0; i < 10; i++) t.update('B1', -88, i * 200);
   assert.equal(t.best(2000), null);
   assert.equal(t.snapshot(2000).length, 1, 'still shown in the debug panel');
+});
+
+test('one-second RSSI batch averages noise and drops extreme outliers', () => {
+  assert.equal(averageRssiBatch([-60, -61, -59]), -60);
+  assert.equal(averageRssiBatch([-100, -61, -60, -59, -20]), -60);
+  assert.ok(Number.isNaN(averageRssiBatch([])));
 });
 
 test('parseBeaconName', () => {
@@ -166,6 +186,57 @@ test('heading filter handles 359 -> 1 wraparound', () => {
   f.push(359);
   const v = f.push(1);
   assert.ok(v > 355 || v < 5, `v=${v}`);
+});
+
+test('gyro/compass fusion integrates turns and compass removes drift', () => {
+  const f = new GyroCompassFusion(0.5);
+  assert.equal(f.pushCompass(350), 350);
+  assert.equal(Math.round(f.pushGyro(20, 0.5)!), 350, 'rejects implausibly long gyro interval');
+  assert.equal(Math.round(f.pushGyro(20, 0.2)!), 354);
+  assert.equal(Math.round(f.pushCompass(2)!), 358, 'corrects across north without wrapping the long way');
+  assert.equal(Math.round(f.pushCompass(90, 90)!), 358, 'rejects inaccurate compass reading');
+  assert.equal(headingDelta(350, 10), 20);
+});
+
+test('wrong-way warning requires sustained opposite steps and clears after recovery', () => {
+  const d = new WrongWayDetector(3, 2, 105);
+  assert.equal(d.push(270, 90).wrongWay, false);
+  assert.equal(d.push(275, 90).wrongWay, false);
+  assert.equal(d.push(280, 90).wrongWay, true);
+  assert.equal(d.push(95, 90).wrongWay, true);
+  assert.equal(d.push(90, 90).wrongWay, false);
+});
+
+test('route heading converts the plan segment to a compass heading', () => {
+  assert.equal(Math.round(routeHeadingAt(idx, ['f1_j1', 'f1_j2'], 'f1', 350, 300)!), 90);
+  assert.equal(routeHeadingAt(idx, ['f1_j1', 'f1_j2'], 'f1', 350, 500, 3), null);
+});
+
+test('position engine combines accelerometer-confirmed steps with route-aware wrong-way state', () => {
+  const engine = new PositionEngine(building, 0.7);
+  assert.equal(engine.setAnchor('f1_j1', 'manual'), true);
+  engine.setRoute(['f1_j1', 'f1_j2']); // east (90°)
+  for (let i = 1; i <= 3; i++) {
+    engine.onStep({ headingDeg: 270, accelerationPeak: 2, timestamp: i * 500 });
+  }
+  assert.equal(engine.navigation.wrongWay, true);
+  assert.ok(engine.position!.x < 300, `x=${engine.position!.x}`);
+  engine.onStep({ headingDeg: 90, accelerationPeak: 2, timestamp: 2000 });
+  engine.onStep({ headingDeg: 90, accelerationPeak: 2, timestamp: 2500 });
+  assert.equal(engine.navigation.wrongWay, false);
+});
+
+test('brief beacon loss cannot bypass same-beacon correction gates', () => {
+  const engine = new PositionEngine(building, 0.7);
+  engine.onBeacon({ id: 'B1', rssi: -60 });
+  for (let i = 1; i <= 3; i++) {
+    engine.onStep({ headingDeg: 90, accelerationPeak: 2, timestamp: i * 500 });
+  }
+  const before = engine.position!;
+  assert.ok(before.x > 500);
+  engine.onBeacon(null);
+  engine.onBeacon({ id: 'B1', rssi: -75 });
+  assert.deepEqual(engine.position, before, 'weak reacquisition must not snap back to B1');
 });
 
 test('parseDeepLink', () => {

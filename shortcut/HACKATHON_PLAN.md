@@ -13,8 +13,8 @@ Take Shortcut from "tested pure logic + unverified UI/adapters + demo map" to a 
 - Position comes from BLE beacons, step counting, and manual "I'm here" taps.
 
 ## Background (from reading the code)
-- `src/lib/*` is pure and covered by 18 Node tests (`npm run test:logic`) — routing (Dijkstra), directions, `BeaconTracker` (EMA + hysteresis), PDR math, deep-link parsing. Solid foundation; keep it green.
-- `PositionEngine` (`engine.ts`) is the single source of truth; all sources (`setAnchor`, `onBeacon`, `onStep`, `setPoint`) funnel through it. BLE is nearest-beacon with smoothing, not trilateration. `onBeacon` only re-anchors when the nearest beacon changes, letting dead reckoning fill the gaps.
+- `src/lib/*` is pure and covered by 27 Node tests (`npm run test:logic`) — routing (Dijkstra), directions, `BeaconTracker` (EMA + hysteresis), PDR math, deep-link parsing. Solid foundation; keep it green.
+- `PositionEngine` (`engine.ts`) is the single source of truth; all sources (`setAnchor`, `onBeacon`, `onStep`, `setPoint`) funnel through it. BLE remains nearest-beacon (not trilateration): one-second RSSI batches, EMA, hysteresis, and two consecutive decisions select a stable fix. Accelerometer-confirmed steps use compass+gyroscope fused headings for dead reckoning; a close current beacon periodically corrects drift.
 - `App.tsx` already wires destination select, BLE toggle, steps toggle, accessible routing, a Debug panel (live RSSI, heading, step count, teleport, clear), arrival message, and `?at=/?to=` deep links. Toasts exist but there's no explicit "BLE signal lost -> relocate" prompt yet (step 6 of KIRO_PROMPT).
 - `ble.ts`, `motion.ts`, `MapView.tsx` were authored without ever being run -> typecheck/build errors and Leaflet/Capacitor typing issues are likely. This is where Lane A's first hours go.
 - `building.json` is the two-floor demo map; beacons B1/B2/B3 map to nodes. Firmware (PlatformIO, `firmware/esp32_beacon`) advertises `CNAV-<id>` on the service UUID in `config.ts`; ids and calibration are set at runtime over BLE/serial. Flashed and tested on all three boards.
@@ -56,7 +56,7 @@ Lane A = Windows machine. Lane B = teammate on Mac. Times are budget guidance wi
 - [ ] **Task 1 (Lane A, ~60 min): Get the build green.**
   Objective: `npm install`, `npm run typecheck`, `npm run test:logic`, `npm run build`, and `npm run dev` all succeed with no behavior changes beyond fixing breakage.
   Guidance: Fix type/build errors in the likely spots — `src/components/MapView.tsx` (Leaflet `@types/leaflet` usage, `CRS.Simple`, layer typing), `src/positioning/ble.ts` (`@capacitor-community/bluetooth-le` `ScanResult`/`BleClient` types), and `motion.ts` (`WakeLockSentinel`, iOS permission casts). Don't change positioning behavior; only make it compile and run. Keep `src/lib/*` pure.
-  Test: `npm run test:logic` stays at 18 passing; `tsc --noEmit` clean; dev server renders the map and lets you pick a destination, tap a node -> "I'm here", and get a route in the browser.
+  Test: `npm run test:logic` stays at 27 passing; `tsc --noEmit` clean; dev server renders the map and lets you pick a destination, tap a node -> "I'm here", and get a route in the browser.
   Demo: In the browser, pick a destination, tap-to-teleport (Debug), see the route and turn-by-turn update live.
 
 - [ ] **Task 1b (Lane B, start once Task 1's `npm run build` is green): iOS app on the iPhone.**
@@ -99,3 +99,4 @@ Lane A = Windows machine. Lane B = teammate on Mac. Times are budget guidance wi
 Dependencies/sync points: Task 1 green unblocks Task 1b. Task 2's finalized beacon nodes unblock precise Task 4a mounting. Tasks 3 and 5 should be `cap:sync`'d before Task 4c's final tuning walk and before Task 6 filming. If BLE tuning (4c) runs long, Task 5's fallback guarantees a complete nav story can still be filmed.
 
 Risk notes: biggest unknowns are (1) how many type errors lurk in the never-run adapters — Task 1 is time-boxed but could overrun; (2) on-device BLE behavior with only 3 beacons in a real building — mitigated by hysteresis tuning and the manual fallback; (3) map coordinate accuracy from eyeballing plans — mitigated by the interactive confirm loop in Task 2.
+3

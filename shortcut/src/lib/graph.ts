@@ -132,6 +132,39 @@ export function snapToGraph(
   return best;
 }
 
+/**
+ * Expected compass heading of the nearest segment in an active route.
+ * Returns null when the position is not close enough to that route.
+ */
+export function routeHeadingAt(
+  idx: BuildingIndex,
+  routeNodes: string[],
+  floor: string,
+  x: number,
+  y: number,
+  maxDistanceM = 3,
+): number | null {
+  let bestDistance = Infinity;
+  let bestHeading: number | null = null;
+  for (let i = 0; i < routeNodes.length - 1; i++) {
+    const a = idx.nodeById.get(routeNodes[i]);
+    const b = idx.nodeById.get(routeNodes[i + 1]);
+    if (!a || !b || a.floor !== floor || b.floor !== floor) continue;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) continue;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / len2));
+    const distance = Math.hypot(x - (a.x + t * dx), y - (a.y + t * dy));
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      const planHeading = (Math.atan2(dx, -dy) * 180) / Math.PI;
+      bestHeading = ((planHeading + idx.building.northOffsetDeg) % 360 + 360) % 360;
+    }
+  }
+  return bestDistance * idx.building.metersPerUnit <= maxDistanceM ? bestHeading : null;
+}
+
 /** Signed turn in degrees between two segments. Plan y points down, so positive = right turn. */
 export function turnAngle(a: GraphNode, b: GraphNode, c: GraphNode): number {
   const h1 = Math.atan2(b.y - a.y, b.x - a.x);

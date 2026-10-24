@@ -5,7 +5,7 @@ import { BEACON_NAME_PREFIX, BEACON_SERVICE_UUID, STEP_LENGTH_M } from './config
 import { describeRoute, destinations, findRoute, nearestNode, nodeLabel } from './lib/graph.ts';
 import { parseDeepLink } from './lib/deeplink.ts';
 import type { Building, Position } from './lib/types.ts';
-import { PositionEngine } from './positioning/engine.ts';
+import { PositionEngine, type NavigationState } from './positioning/engine.ts';
 import { BleLocator, type BeaconSnapshot } from './positioning/ble.ts';
 import { MotionSensors } from './positioning/motion.ts';
 import MapView from './components/MapView.tsx';
@@ -19,6 +19,7 @@ const isNative = Capacitor.isNativePlatform();
 
 export default function App() {
   const [pos, setPos] = useState<Position | null>(engine.position);
+  const [navigation, setNavigation] = useState<NavigationState>(engine.navigation);
   const [dest, setDest] = useState<string>(() => localStorage.getItem(DEST_KEY) ?? '');
   const [accessible, setAccessible] = useState(false);
   const [viewFloor, setViewFloor] = useState<string>(engine.position?.floor ?? building.floors[0].id);
@@ -41,6 +42,8 @@ export default function App() {
     lastFloor.current = p?.floor ?? null;
   }), []);
 
+  useEffect(() => engine.subscribeNavigation(setNavigation), []);
+
   // deep links: ?at=<node>&to=<node>
   useEffect(() => {
     const a = parseDeepLink(window.location.href);
@@ -62,6 +65,7 @@ export default function App() {
     [fromId, dest, accessible],
   );
   const steps = useMemo(() => (route ? describeRoute(engine.idx, route) : []), [route]);
+  useEffect(() => engine.setRoute(route?.nodes ?? []), [route]);
   const arrived = !!dest && fromId === dest;
   const noRoute = !!fromId && !!dest && !route;
   const destNode = dest ? engine.idx.nodeById.get(dest) : undefined;
@@ -71,7 +75,7 @@ export default function App() {
     if (bleOn) { await ble.stop(); setBleOn(false); setBeacons([]); return; }
     if (!isNative) return flash('Bluetooth scanning only works in the iOS app build, not in Safari.');
     try {
-      await ble.start({ onBeacon: (id) => engine.onBeacon(id), onSnapshot: setBeacons });
+      await ble.start({ onBeacon: (beacon) => engine.onBeacon(beacon), onSnapshot: setBeacons });
       setBleOn(true);
     } catch (e) { flash(`Bluetooth: ${e instanceof Error ? e.message : String(e)}`); }
   };
@@ -80,7 +84,7 @@ export default function App() {
   const toggleSteps = async () => {
     if (stepsOn) { motion.stop(); setStepsOn(false); return; }
     try {
-      await motion.start((h) => { engine.onStep(h); setStepCount(motion.steps); });
+      await motion.start((observation) => { engine.onStep(observation); setStepCount(motion.steps); });
       setStepsOn(true);
     } catch (e) { flash(e instanceof Error ? e.message : String(e)); }
   };
@@ -126,6 +130,7 @@ export default function App() {
       <section className="panel">
         {!pos && <p className="hint">Turn on Bluetooth, or tap a place on the map and choose “I’m here”.</p>}
         {pos && !dest && <p className="hint">Choose a destination above.</p>}
+        {navigation.wrongWay && <p className="wrong-way">↩️ You may be going the wrong way. Turn around and follow the route.</p>}
         {arrived && <p className="arrived">🎉 You’ve arrived at {destNode ? nodeLabel(destNode) : 'your destination'}</p>}
         {noRoute && <p className="warn">No route found{accessible ? ' (try turning off accessible routing)' : ''}.</p>}
         {route && !arrived && (
@@ -151,7 +156,8 @@ export default function App() {
         {debug && (
           <div className="debug">
             <div>Position: {pos ? `${pos.floor} (${Math.round(pos.x)}, ${Math.round(pos.y)}) via ${pos.source}${pos.nodeId ? ` @ ${pos.nodeId}` : ''}` : 'unknown'}</div>
-            <div>Heading: {motion.currentHeading === null ? '—' : `${Math.round(motion.currentHeading)}°`} · steps: {stepCount}</div>
+            <div>Heading: {motion.currentHeading === null ? '—' : `${Math.round(motion.currentHeading)}° fused`} · steps: {stepCount}</div>
+            <div>Route heading error: {navigation.headingErrorDeg === null ? '—' : `${Math.round(navigation.headingErrorDeg)}°`}{navigation.wrongWay ? ' · WRONG WAY' : ''}</div>
             <div>Beacons heard: {beacons.length === 0 ? 'none' : beacons.map((b) => `${b.id} ${Math.round(b.rssi)} dBm`).join(' · ')}</div>
             <label><input type="checkbox" checked={teleport} onChange={(e) => setTeleport(e.target.checked)} /> Tap map to teleport</label>
             <button className="ghost" onClick={() => engine.clear()}>Clear position</button>

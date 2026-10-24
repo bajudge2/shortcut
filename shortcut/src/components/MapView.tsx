@@ -31,6 +31,7 @@ export default function MapView({ building, floorId, position, routeNodes, desti
   const staticLayer = useRef<L.LayerGroup | null>(null);
   const routeLayer = useRef<L.LayerGroup | null>(null);
   const userLayer = useRef<L.LayerGroup | null>(null);
+  const userMarker = useRef<L.Marker | null>(null);
   const cbs = useRef({ onNodeTap, onMapTap, floorId });
   cbs.current = { onNodeTap, onMapTap, floorId };
 
@@ -118,16 +119,30 @@ export default function MapView({ building, floorId, position, routeNodes, desti
     }
   }, [building, floorId, routeNodes, destinationId]);
 
-  // "you are here"
+  // "you are here"; retain one DOM marker so CSS can interpolate step updates.
   useEffect(() => {
     const layer = userLayer.current;
     const map = mapRef.current;
     if (!layer || !map) return;
-    layer.clearLayers();
-    if (!position || position.floor !== floorId) return;
+    if (!position || position.floor !== floorId) {
+      if (userMarker.current) layer.removeLayer(userMarker.current);
+      userMarker.current = null;
+      return;
+    }
     const p = ll(position.x, position.y);
-    L.circleMarker(p, { radius: 18, stroke: false, fillColor: '#3b82f6', fillOpacity: 0.2, interactive: false }).addTo(layer);
-    L.circleMarker(p, { radius: 8, color: '#ffffff', weight: 3, fillColor: '#2563eb', fillOpacity: 1, interactive: false }).addTo(layer);
+    if (!userMarker.current) {
+      userMarker.current = L.marker(p, {
+        interactive: false,
+        icon: L.divIcon({
+          className: 'user-marker',
+          html: '<span class="user-marker-halo"></span><span class="user-marker-dot"></span>',
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        }),
+      }).addTo(layer);
+    } else {
+      userMarker.current.setLatLng(p);
+    }
     if (!map.getBounds().contains(p)) map.panTo(p);
   }, [position, floorId]);
 
