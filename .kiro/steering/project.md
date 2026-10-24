@@ -4,6 +4,8 @@ inclusion: always
 
 # Shortcut — project context
 
+Paths below are relative to the app folder `shortcut/`, one level below the workspace root. Run npm scripts from there.
+
 Indoor navigation ("Google Maps for a campus building") built for a hackathon.
 iOS app = React + Vite + TypeScript web UI wrapped with Capacitor, plus ESP32 BLE beacons for positioning.
 

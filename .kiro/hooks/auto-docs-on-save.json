@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Auto-update codebase docs",
+      "trigger": "PostFileSave",
+      "description": "When a source file under src/, firmware/, or tools/ is saved, update the developer docs in shortcut/docs/ to match the code.",
+      "matcher": "(^|[\\\\/])(src|tools|firmware)[\\\\/].*\\.(tsx?|mjs|html|cpp|h)$",
+      "action": {
+        "type": "agent",
+        "prompt": "A source file in the Shortcut app was just saved. Keep the developer docs in shortcut/docs/ (next to shortcut/src/) in sync with the code.\n\n1. Find what changed. Use the saved file path from the hook event if it is provided; otherwise run `git status` and `git diff` in the shortcut/ folder. Read the changed file, plus the modules that use it if its exports changed.\n2. If the change is trivial (formatting, comments only, renaming a local variable), stop without editing anything.\n3. Docs layout. Create missing files as needed. If shortcut/docs/ does not exist yet, read src/, firmware/, and tools/ and write the full set first.\n   - README.md: what the app does, the architecture and module boundaries, how position data flows from its sources (QR, BLE, steps, manual tap) through the position engine to the UI, and an index of the other docs\n   - building-data.md: the building.json schema plus coordinate and unit conventions\n   - lib.md: src/lib/\n   - positioning.md: src/positioning/\n   - app.md: src/App.tsx, src/main.tsx, src/config.ts, src/components/\n   - firmware.md: firmware/esp32_beacon/\n   - tools.md: tools/\n4. For each module, document its purpose, its exported functions, classes, and types (parameters, return values, units), how it connects to other modules, and any non-obvious behavior or assumptions. Keep it concise and developer-facing.\n5. Update only the sections the change affects. Remove docs for code that no longer exists, and keep the index in docs/README.md current.\n6. Describe the code as it is now. If behavior is not clear from the code, say so instead of guessing.\n7. Only edit files under shortcut/docs/. Never modify code, tests, or other markdown files. Link to shortcut/README.md for setup, flashing, and the calibration protocol instead of repeating it.\n8. If you are in the middle of a multi-file change, update the docs once when the change is complete rather than after every file.\n9. End with one line listing the doc files you changed, or \"Docs: no changes needed.\""
+      }
+    }
+  ]
+}
