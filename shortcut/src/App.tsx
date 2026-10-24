@@ -159,7 +159,12 @@ export default function App() {
             {engine.pendingBeacon && (
               <div>Ignoring {engine.pendingBeacon.id}: too far from step estimate ({engine.pendingBeacon.count}/{engine.pendingBeacon.needed})</div>
             )}
-            <div>Beacons heard: {beacons.length === 0 ? 'none' : beacons.map((b) => `${b.id} ${Math.round(b.rssi)} dBm`).join(' · ')}</div>
+            <div>Beacons heard: {beacons.length === 0 ? 'none' : `${beacons.length} (ranked by calibrated dBm)`}</div>
+            {beacons.map((b) => (
+              <div key={b.id}>
+                {b.id} {Math.round(b.rssi)} dBm · raw {Math.round(b.rawRssi)} · 1 m: {b.measuredPower === null ? 'not received' : `${b.measuredPower}`}
+              </div>
+            ))}
             <label><input type="checkbox" checked={teleport} onChange={(e) => setTeleport(e.target.checked)} /> Tap map to teleport</label>
             <button className="ghost" onClick={() => engine.clear()}>Clear position</button>
             <SignalSimControls beacons={building.beacons} simOn={signal.simOn} disabled={signal.simDisabled}

@@ -2,7 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { indexBuilding, findRoute, describeRoute, snapToGraph, nearestNode, destinations, routeHeadingAt } from '../src/lib/graph.ts';
-import { BeaconTracker, averageRssiBatch, parseBeaconName } from '../src/lib/beacon-math.ts';
+import {
+  BeaconTracker,
+  REFERENCE_MEASURED_POWER,
+  averageRssiBatch,
+  calibrateRssi,
+  parseBeaconCalibration,
+  parseBeaconName,
+} from '../src/lib/beacon-math.ts';
 import { advanceStep, StepDetector, HeadingFilter } from '../src/lib/pdr-math.ts';
 import { GyroCompassFusion, WrongWayDetector, headingDelta } from '../src/lib/fusion-math.ts';
 import { parseDeepLink } from '../src/lib/deeplink.ts';
@@ -155,6 +162,46 @@ test('one-second RSSI batch averages noise and drops extreme outliers', () => {
   assert.equal(averageRssiBatch([-60, -61, -59]), -60);
   assert.equal(averageRssiBatch([-100, -61, -60, -59, -20]), -60);
   assert.ok(Number.isNaN(averageRssiBatch([])));
+});
+
+test('parseBeaconCalibration reads the firmware scan-response payload', () => {
+  // [version 1, measuredPower -59 as int8 (0xC5), pathLoss 2.0 (20), rev 3]
+  assert.deepEqual(parseBeaconCalibration(new Uint8Array([1, 0xc5, 20, 3])), { measuredPower: -59, pathLoss: 2, rev: 3 });
+  assert.deepEqual(parseBeaconCalibration([1, 0xce, 22, 255]), { measuredPower: -50, pathLoss: 2.2, rev: 255 });
+  assert.equal(parseBeaconCalibration([2, 0xc5, 20, 3]), null, 'unknown format version');
+  assert.equal(parseBeaconCalibration([1, 0xc5, 20]), null, 'too short');
+  assert.equal(parseBeaconCalibration([1, 5, 20, 0]), null, 'measuredPower above 0 dBm');
+  assert.equal(parseBeaconCalibration([1, 0xc5, 70, 0]), null, 'pathLoss above 6.0');
+});
+
+test('calibrateRssi removes per-board loudness relative to the reference board', () => {
+  assert.equal(calibrateRssi(-70, REFERENCE_MEASURED_POWER), -70, 'reference board unchanged');
+  assert.equal(calibrateRssi(-70, -50), -79, 'board 9 dB hotter than reference is turned down 9 dB');
+  assert.equal(calibrateRssi(-70, -65), -64, 'quiet board is turned up');
+  assert.equal(calibrateRssi(-70, null), -70, 'no calibration: unchanged');
+  assert.equal(calibrateRssi(-70, undefined), -70);
+});
+
+test('calibration stops a loud far board from beating a quiet near one (Info Desk vs Exit B)', () => {
+  // Standing at the Info Desk: B2 (quiet board, 1 m = -66) is near; B3 (loud board, 1 m = -52) is ~15 m away.
+  // Raw, B3 reads louder. Calibrated, B2 is clearly closer.
+  const raw = { B2: -71, B3: -67 };
+  const cal = { B2: -66, B3: -52 };
+
+  const uncalibrated = new BeaconTracker();
+  uncalibrated.update('B2', raw.B2, 0);
+  uncalibrated.update('B3', raw.B3, 0);
+  assert.equal(uncalibrated.best(0)?.id, 'B3', 'raw ranking picks the loud far board');
+
+  const calibrated = new BeaconTracker();
+  for (let s = 0; s < 6; s++) {
+    calibrated.update('B2', calibrateRssi(raw.B2, cal.B2), s * 1000);
+    calibrated.update('B3', calibrateRssi(raw.B3, cal.B3), s * 1000);
+    assert.equal(calibrated.best(s * 1000)?.id, 'B2', `second ${s}`);
+  }
+  // -71 - (-66 - -59) = -64 for B2; -67 - (-52 - -59) = -74 for B3
+  assert.equal(calibrateRssi(raw.B2, cal.B2), -64);
+  assert.equal(calibrateRssi(raw.B3, cal.B3), -74);
 });
 
 test('parseBeaconName', () => {

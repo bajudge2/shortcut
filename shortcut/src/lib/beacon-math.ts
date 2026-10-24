@@ -104,6 +104,50 @@ export function averageRssiBatch(values: number[]): number {
   return used.reduce((sum, value) => sum + value, 0) / used.length;
 }
 
+/**
+ * The 1 m RSSI every threshold in this file and engine.ts was tuned for (the firmware's
+ * default `measuredPower`). Calibrated readings are expressed relative to this reference.
+ */
+export const REFERENCE_MEASURED_POWER = -59;
+
+/** Manufacturer data format version written by the firmware (protocol.h kMfgFormatVersion). */
+const CALIBRATION_FORMAT_VERSION = 1;
+
+export interface BeaconCalibration {
+  /** expected RSSI at 1 m in dBm, as calibrated on the board */
+  measuredPower: number;
+  /** path-loss exponent (2.0 = free space); broadcast by the firmware, not used for ranking */
+  pathLoss: number;
+  /** low byte of the board's config revision */
+  rev: number;
+}
+
+/**
+ * Parses the calibration payload from the beacon's scan response: manufacturer data for
+ * company 0xFFFF with the 2-byte company id already removed, i.e.
+ * [version, measuredPower (int8), pathLoss * 10 (uint8), rev (uint8)].
+ * Returns null for an unknown version or values outside the firmware's validated ranges.
+ */
+export function parseBeaconCalibration(bytes: ArrayLike<number>): BeaconCalibration | null {
+  if (bytes.length < 4 || bytes[0] !== CALIBRATION_FORMAT_VERSION) return null;
+  const measuredPower = bytes[1] > 127 ? bytes[1] - 256 : bytes[1];
+  const pathLossX10 = bytes[2];
+  if (measuredPower < -120 || measuredPower > 0) return null;
+  if (pathLossX10 < 10 || pathLossX10 > 60) return null;
+  return { measuredPower, pathLoss: pathLossX10 / 10, rev: bytes[3] };
+}
+
+/**
+ * Removes per-board differences (TX power, antenna, chip) before beacons are compared:
+ * a board calibrated hotter than the reference is turned down by the difference, so
+ * "strongest beacon" means "closest beacon", not "loudest board". Without a calibration
+ * the reading is returned unchanged.
+ */
+export function calibrateRssi(rssi: number, measuredPower?: number | null): number {
+  if (measuredPower === undefined || measuredPower === null) return rssi;
+  return rssi - (measuredPower - REFERENCE_MEASURED_POWER);
+}
+
 /** Extracts the short beacon id from an advertised name like "CNAV-B1". */
 export function parseBeaconName(name: string | undefined | null, prefix: string): string | null {
   if (!name || !name.startsWith(prefix)) return null;
