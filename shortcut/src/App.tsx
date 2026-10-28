@@ -27,6 +27,7 @@ const DEST_KEY = 'cnav:dest';
 const isNative = Capacitor.isNativePlatform();
 
 export default function App() {
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [pos, setPos] = useState<Position | null>(engine.position);
   const [navigation, setNavigation] = useState<NavigationState>(engine.navigation);
   // ignore a saved destination that is no longer on the map (e.g. after a map swap)
@@ -115,21 +116,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="top">
-        <LocationPicker groups={groups} position={pos} onSelect={chooseLocation} />
-        <select value={dest} onChange={(e) => setDest(e.target.value)} aria-label="Destination">
-          <option value="">Where to?</option>
-          {groups.map((g) => (
-            <optgroup key={g.floor.id} label={g.floor.label}>
-              {g.nodes.map((n) => (
-                <option key={n.id} value={n.id}>{destinationName(n)}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        {dest && <button className="ghost" aria-label="Clear destination" onClick={() => setDest('')}>✕</button>}
-      </header>
-
       <div className="map-wrap">
         <MapView
           building={building}
@@ -153,7 +139,35 @@ export default function App() {
         </div>
       </div>
 
-      <section className="panel">
+      <section className={`panel drawer${drawerOpen ? '' : ' collapsed'}`}>
+        <button
+          className="drawer-handle"
+          aria-expanded={drawerOpen}
+          aria-controls="drawer-body"
+          aria-label={drawerOpen ? 'Collapse drawer' : 'Expand drawer'}
+          onClick={() => setDrawerOpen((o) => !o)}
+        >
+          <span className="drawer-grip" aria-hidden="true" />
+        </button>
+
+        <div className="pickers">
+          <LocationPicker groups={groups} position={pos} onSelect={chooseLocation} />
+          <div className="dest-row">
+            <select value={dest} onChange={(e) => setDest(e.target.value)} aria-label="Destination">
+              <option value="">Where to?</option>
+              {groups.map((g) => (
+                <optgroup key={g.floor.id} label={g.floor.label}>
+                  {g.nodes.map((n) => (
+                    <option key={n.id} value={n.id}>{destinationName(n)}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {dest && <button className="ghost" aria-label="Clear destination" onClick={() => setDest('')}>✕</button>}
+          </div>
+        </div>
+
+        <div id="drawer-body" hidden={!drawerOpen}>
         <PositionStatus building={building} position={pos} viewFloor={viewFloor} onShowFloor={setViewFloor} />
         {navigation.wrongWay && <p className="wrong-way">↩ You may be going the wrong way. Turn around and follow the route.</p>}
         <RouteGuidance positionKnown={!!pos} destNode={destNode} route={route} steps={steps}
@@ -187,6 +201,7 @@ export default function App() {
               onToggle={signal.setSimOn} onBeacon={signal.simulateBeacon} />
           </div>
         )}
+        </div>
       </section>
     </div>
   );

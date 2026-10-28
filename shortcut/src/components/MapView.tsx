@@ -27,6 +27,9 @@ const rectToBounds = (r: PlanRect) => L.latLngBounds(ll(r.minX, r.maxY), ll(r.ma
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
 
+/** Zoom levels to back off from "whole plan fits" on open. Raise for less zoom. */
+const PLAN_ZOOM_OUT = 0.5;
+
 /**
  * Decluttered map: the floor plan as the base layer, plus only the route, the
  * destination, and the user. While a route is active it follows the user;
@@ -169,7 +172,12 @@ export default function MapView({ building, floorId, position, routeNodes, desti
         move(() => map.fitBounds(rectToBounds(cmd.rect), { padding: [24, 24], maxZoom: map.getMaxZoom(), animate }));
         break;
       case 'plan':
-        move(() => map.fitBounds(planBounds, { padding: [10, 10], animate }));
+        move(() => {
+          // Fit the whole plan, then back off a little so it opens less zoomed in.
+          const pad = L.point(10, 10);
+          const zoom = map.getBoundsZoom(planBounds, false, pad) - PLAN_ZOOM_OUT;
+          map.setView(planBounds.getCenter(), Math.max(zoom, map.getMinZoom()), { animate });
+        });
         break;
       case 'reveal': {
         const p = ll(position!.x, position!.y);

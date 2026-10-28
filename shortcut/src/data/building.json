@@ -8,48 +8,48 @@
       "id": "f2",
       "label": "Floor 2",
       "level": 2,
-      "width": 809,
-      "height": 759,
-      "image": "/plans/f2-newGraphic.jpeg"
+      "width": 628,
+      "height": 642,
+      "image": "/plans/f2-zoom-graphic.svg"
     }
   ],
   "nodes": [
     {
       "id": "f2_club_hub",
       "floor": "f2",
-      "x": 338,
-      "y": 280,
+      "x": 213,
+      "y": 164,
       "kind": "room",
       "name": "Club Hub (A-240)"
     },
     {
       "id": "f2_restrooms",
       "floor": "f2",
-      "x": 333,
-      "y": 376,
+      "x": 213,
+      "y": 265,
       "kind": "restroom",
       "name": "Restrooms & Elevators"
     },
     {
       "id": "f2_crossroads",
       "floor": "f2",
-      "x": 331,
-      "y": 574,
+      "x": 210,
+      "y": 457,
       "kind": "junction"
     },
     {
       "id": "f2_a255",
       "floor": "f2",
-      "x": 235,
-      "y": 575,
+      "x": 121,
+      "y": 460,
       "kind": "room",
       "name": "A-255"
     },
     {
       "id": "f2_student_engagement",
       "floor": "f2",
-      "x": 619,
-      "y": 575,
+      "x": 504,
+      "y": 455,
       "kind": "room",
       "name": "Student Engagement (A-220)"
     }

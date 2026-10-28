@@ -134,7 +134,7 @@
       <label>floor label</label>
       <input id="fLabel" value="Floor 1" />
       <label>image path (served by Vite)</label>
-      <input id="fImage" value="/plans/f2-newGraphic.jpeg" />
+      <input id="fImage" value="/plans/f2-graphic-noBackground.png" />
       <p class="hint">Plan size is read from the image: <span id="imgDims">—</span> (plan units = pixels).</p>
     </details>
   </div>
@@ -142,7 +142,7 @@
 
 <script>
 // ---- state ---------------------------------------------------------------
-const PLAN_SRC = '../public/plans/f2-newGraphic.jpeg';
+const PLAN_SRC = '../public/plans/f2-graphic-noBackground.png';
 /** @type {{id:string,x:number,y:number,kind:string,name:string}[]} */
 let nodes = [];
 /** @type {{from:string,to:string,type?:string}[]} */
