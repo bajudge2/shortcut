@@ -8,27 +8,82 @@
       "id": "f2",
       "label": "Floor 2",
       "level": 2,
-      "width": 675,
-      "height": 555,
-      "image": "/plans/f2.png"
+      "width": 809,
+      "height": 759,
+      "image": "/plans/f2-newGraphic.jpeg"
     }
   ],
   "nodes": [
-    { "id": "f2_club_hub", "floor": "f2", "x": 258, "y": 272, "kind": "room", "name": "Club Hub (A-240)" },
-    { "id": "f2_restrooms", "floor": "f2", "x": 258, "y": 352, "kind": "restroom", "name": "Restrooms & Elevators" },
-    { "id": "f2_crossroads", "floor": "f2", "x": 258, "y": 432, "kind": "junction" },
-    { "id": "f2_a255", "floor": "f2", "x": 212, "y": 432, "kind": "room", "name": "A-255" },
-    { "id": "f2_student_engagement", "floor": "f2", "x": 430, "y": 438, "kind": "room", "name": "Student Engagement (A-220)" }
+    {
+      "id": "f2_club_hub",
+      "floor": "f2",
+      "x": 338,
+      "y": 280,
+      "kind": "room",
+      "name": "Club Hub (A-240)"
+    },
+    {
+      "id": "f2_restrooms",
+      "floor": "f2",
+      "x": 333,
+      "y": 376,
+      "kind": "restroom",
+      "name": "Restrooms & Elevators"
+    },
+    {
+      "id": "f2_crossroads",
+      "floor": "f2",
+      "x": 331,
+      "y": 574,
+      "kind": "junction"
+    },
+    {
+      "id": "f2_a255",
+      "floor": "f2",
+      "x": 235,
+      "y": 575,
+      "kind": "room",
+      "name": "A-255"
+    },
+    {
+      "id": "f2_student_engagement",
+      "floor": "f2",
+      "x": 619,
+      "y": 575,
+      "kind": "room",
+      "name": "Student Engagement (A-220)"
+    }
   ],
   "edges": [
-    { "from": "f2_club_hub", "to": "f2_restrooms" },
-    { "from": "f2_restrooms", "to": "f2_crossroads" },
-    { "from": "f2_crossroads", "to": "f2_a255" },
-    { "from": "f2_crossroads", "to": "f2_student_engagement" }
+    {
+      "from": "f2_club_hub",
+      "to": "f2_restrooms"
+    },
+    {
+      "from": "f2_restrooms",
+      "to": "f2_crossroads"
+    },
+    {
+      "from": "f2_crossroads",
+      "to": "f2_a255"
+    },
+    {
+      "from": "f2_crossroads",
+      "to": "f2_student_engagement"
+    }
   ],
   "beacons": [
-    { "id": "B1", "node": "f2_club_hub" },
-    { "id": "B2", "node": "f2_a255" },
-    { "id": "B3", "node": "f2_student_engagement" }
+    {
+      "id": "B1",
+      "node": "f2_club_hub"
+    },
+    {
+      "id": "B2",
+      "node": "f2_a255"
+    },
+    {
+      "id": "B3",
+      "node": "f2_student_engagement"
+    }
   ]
 }
